@@ -6,6 +6,7 @@
 -- findings and gives each luacheck code its lua-doctor code.
 --
 --   951  accessing an undefined variable        (luacheck 113, selene undefined_variable)
+--   952  setting or mutating a non-standard global (luacheck 111, 112)
 --
 -- Opt-in: see rules/lint_gate.lua. Code range 950-979.
 local M = {}
@@ -16,9 +17,12 @@ local lint_gate = require "luadoctor.rules.lint_gate"
 
 local detectors = {}
 
--- luacheck code -> the lua-doctor code that reports it.
+-- luacheck code -> the lua-doctor code that reports it, and the `action` its
+-- message names.
 local EMITTED = {
-   ["113"] = "951",
+   ["113"] = {code = "951"},
+   ["111"] = {code = "952", action = "setting"},
+   ["112"] = {code = "952", action = "mutating"},
 }
 
 -- The raw warnings of detect_globals, once per file: several lint rules read
@@ -68,9 +72,9 @@ end
 local function detect_names(ctx)
    local wanted = {}
    local any = false
-   for luacheck_code, code in pairs(EMITTED) do
-      if lint_gate.wanted(ctx.opts, code) then
-         wanted[luacheck_code] = code
+   for luacheck_code, target in pairs(EMITTED) do
+      if lint_gate.wanted(ctx.opts, target.code) then
+         wanted[luacheck_code] = target
          any = true
       end
    end
@@ -79,9 +83,9 @@ local function detect_names(ctx)
    local std = std_names.current(ctx.opts)
    for _, warning in ipairs(raw_warnings(ctx.chstate)) do
       local luacheck_code = classify(std, warning)
-      local code = luacheck_code and wanted[luacheck_code]
-      if code then
-         ctx:emit(code, span(ctx, warning), {name = warning.name})
+      local target = luacheck_code and wanted[luacheck_code]
+      if target then
+         ctx:emit(target.code, span(ctx, warning), {name = warning.name, action = target.action})
       end
    end
 end
