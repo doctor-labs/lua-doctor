@@ -192,6 +192,7 @@ default, because a firmware tree reports them by the thousand: they run under
 | 952 | low | CWE-0 | setting or mutating a non-standard global variable (luacheck 111, 112) |
 | 953 | low | CWE-0 | setting a read-only global variable or a field of one (luacheck 121, 122) |
 | 954 | low | CWE-0 | setting or accessing an undefined field of a global (luacheck 142, 143) |
+| 957 | low | CWE-0 | more arguments passed than the function takes (selene mismatched_arg_count) |
 
 ## 9xx - meta
 

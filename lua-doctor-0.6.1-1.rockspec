@@ -60,6 +60,7 @@ build = {
       ["luadoctor.main"] = "src/luadoctor/main.lua",
       ["luadoctor.registry.platform_api"] = "src/luadoctor/registry/platform_api.lua",
       ["luadoctor.registry.profiles"] = "src/luadoctor/registry/profiles.lua",
+      ["luadoctor.registry.stdlib_args"] = "src/luadoctor/registry/stdlib_args.lua",
       ["luadoctor.registry.std_names"] = "src/luadoctor/registry/std_names.lua",
       ["luadoctor.registry.stds.cgilua"] = "src/luadoctor/registry/stds/cgilua.lua",
       ["luadoctor.registry.stds.espressif"] = "src/luadoctor/registry/stds/espressif.lua",

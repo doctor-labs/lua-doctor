@@ -11,12 +11,14 @@
 --   952  setting or mutating a non-standard global (luacheck 111, 112)
 --   953  setting a read-only global or a field of one (luacheck 121, 122)
 --   954  setting or accessing an undefined field of a global (luacheck 142, 143)
+--   957  more arguments than the callee takes  (selene mismatched_arg_count)
 --
 -- Opt-in: see rules/lint_gate.lua. Code range 950-979.
 local M = {}
 
 local detect_globals = require "luacheck.stages.detect_globals"
 local std_names = require "luadoctor.registry.std_names"
+local platform_api = require "luadoctor.registry.platform_api"
 local lint_gate = require "luadoctor.rules.lint_gate"
 
 local detectors = {}
@@ -133,6 +135,82 @@ local function detect_names(ctx)
 end
 
 detectors[#detectors + 1] = detect_names
+
+-- ---------------------------------------------------------------- 957
+
+-- Every call expression with the statement it sits in, nested ones included. A
+-- function body is its own line, so it is not entered.
+local function each_call(chstate, visit)
+   local function walk(node, item, depth)
+      if type(node) ~= "table" or depth > 64 or node.tag == "Function" then return end
+      if node.tag == "Call" then visit(node, item) end
+      for _, child in ipairs(node) do
+         if type(child) == "table" then walk(child, item, depth + 1) end
+      end
+   end
+   for _, line in ipairs(chstate.lines) do
+      for _, item in ipairs(line.items) do
+         if item.tag == "Eval" then
+            walk(item.node, item, 0)
+         elseif item.tag == "Local" or item.tag == "Set" then
+            for _, value in ipairs(item.rhs or {}) do walk(value, item, 0) end
+         end
+      end
+   end
+end
+
+-- The arguments a call passes, and whether the last of them can expand into
+-- several values (a call, `...`), in which case the count is a floor.
+local function call_arguments(node)
+   local args = {}
+   for index = 2, #node do args[#args + 1] = node[index] end
+   return args
+end
+
+-- How many arguments a local function takes, or nil when it is unknown or
+-- takes any number: every definition that can reach the call must be a plain
+-- function, and the most generous one decides (selene's "best overlap").
+local function local_arity(callee, item)
+   if callee.tag ~= "Id" or not callee.var or not item or not item.used_values then return nil end
+   local values = item.used_values[callee.var]
+   if not values or #values == 0 then return nil end
+   local most = 0
+   for _, value in ipairs(values) do
+      local fn = value.node
+      if not fn or fn.tag ~= "Function" then return nil end
+      local count = 0
+      for _, formal in ipairs(fn[1] or {}) do
+         if formal.tag == "Dots" then return nil end
+         count = count + 1
+      end
+      if count > most then most = count end
+   end
+   return most
+end
+
+local function detect_arg_count(ctx)
+   if not lint_gate.wanted(ctx.opts, "957") then return end
+   each_call(ctx.chstate, function(node, item)
+      local args = call_arguments(node)
+      local given = #args
+
+      local path = ctx:path_of(node[1])
+      local params = path and platform_api.params_for(path)
+      local most
+      if params then
+         most = params[#params] ~= "..." and #params or nil
+      else
+         most = local_arity(node[1], item)
+         path = path or (node[1].tag == "Id" and node[1][1]) or nil
+      end
+
+      if most and path and given > most then
+         ctx:emit("957", node, {name = path, max = most, given = given})
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_arg_count
 
 --- The detectors this module contributes, in run order.
 function M.detectors()

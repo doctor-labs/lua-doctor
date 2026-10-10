@@ -898,6 +898,7 @@ shape as a `--std` profile. A profile declares five fields (all optional):
 | `sinks` | `{pattern, code, kind, arg}` — where untrusted data reaches an effect |
 | `propagators` | `{pattern, arg}` — functions that carry taint without being sinks |
 | `sanitizers` | `{shell, dyncode, path}` — lists of functions that scrub each sink class |
+| `params` | on a sink, source, shape or propagator entry: the API's parameter types (`{"string", "number?", "..."}`) for the 957 argument-count lint |
 | `globals` | luacheck std tables (`{read_globals = {...}, globals = {...}}`) — names the undefined-name checks (713) must accept; the first segment of every declared pattern is accepted already, with unknown fields |
 
 The `--std` profile files live in `src/luadoctor/registry/stds/`. A custom rules

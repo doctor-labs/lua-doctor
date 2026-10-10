@@ -265,4 +265,10 @@ register {code = "953", severity = "low", cwe = "CWE-0", confidence = "medium",
 register {code = "954", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "{action} undefined field of global ({name})", fields = {"action"}}
 
+-- selene mismatched_arg_count. The extra arguments are ignored at run time, so
+-- they usually mean the callee is not the function the author had in mind; for
+-- a sink, a misplaced argument is how the value that matters never reaches it.
+register {code = "957", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "too many arguments to {name}: it takes {max}, {given} passed", fields = {"max", "given"}}
+
 return codes

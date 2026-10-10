@@ -251,3 +251,73 @@ describe("951 with selene's semantics (#357)", function()
       assert_equal(#names_of("entry({'a'}, call('b'), _('c'))\n", {category = {"lint"}, std = "+luci"}), 0)
    end)
 end)
+
+describe("957 more arguments than the function takes (#381)", function()
+   local function hits(source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == "957" then out[#out + 1] = finding end
+      end
+      return out
+   end
+
+   it("a standard function given an extra argument is reported", function()
+      local found = hits("local n = os.getenv('HOME', 'extra')\n")
+      assert_equal(#found, 1)
+      assert_equal(found[1].name, "os.getenv")
+      assert_match(found[1].message, "takes 1, 2 passed", found[1].message)
+   end)
+
+   it("a sink with a misplaced argument is reported", function()
+      assert_equal(#hits("os.execute('ls', 'extra')\n"), 1)
+   end)
+
+   it("the widest signature across Lua versions is accepted", function()
+      assert_equal(#hits("load('x', 'name', 't', {})\nlocal s = ('x'):rep(3)\nstring.rep('x', 3, ',')\n"), 0)
+   end)
+
+   it("a vararg function accepts any number", function()
+      assert_equal(#hits("print(1, 2, 3, 4, 5)\nstring.format('%d %d', 1, 2)\n"), 0)
+   end)
+
+   it("a local function is checked against its parameters", function()
+      assert_equal(#hits("local function add(a, b) return a + b end\nadd(1, 2, 3)\n"), 1)
+      assert_equal(#hits("local function add(a, b) return a + b end\nadd(1, 2)\nadd(1)\n"), 0)
+   end)
+
+   it("a local function that takes ... is never reported", function()
+      assert_equal(#hits("local function f(a, ...) end\nf(1, 2, 3, 4)\n"), 0)
+   end)
+
+   it("a redefined local function uses the most generous definition", function()
+      assert_equal(#hits("local f = function(a) end\nf = function(a, b, c) end\nf(1, 2, 3)\n"), 0)
+   end)
+
+   it("a shadowing local is not the library function", function()
+      assert_equal(#hits("local os = {getenv = function(a, b) end}\nos.getenv(1, 2)\n"), 0)
+   end)
+
+   it("a profile's params make its own API checkable", function()
+      local rules = harness.scratch_dir("lint_params") .. "/profile.lua"
+      local handle = assert(io.open(rules, "w"))
+      handle:write('return {name = "mine", sinks = {{pattern = "vendor.run", code = "701", kind = "exec",'
+         .. ' arg = {1}, params = {"string", "number?"}}}}\n')
+      handle:close()
+      assert_equal(#hits("vendor.run('a', 1, 2)\n", {category = {"lint"}, rules = {rules}}), 1)
+      assert_equal(#hits("vendor.run('a', 1)\n", {category = {"lint"}, rules = {rules}}), 0)
+   end)
+
+   it("a malformed params list is refused", function()
+      local rules = harness.scratch_dir("lint_params_bad") .. "/profile.lua"
+      local handle = assert(io.open(rules, "w"))
+      handle:write('return {name = "mine", sinks = {{pattern = "vendor.run", code = "701", kind = "exec",'
+         .. ' arg = {1}, params = {"..."  , "string"}}}}\n')
+      handle:close()
+      local out, code = harness.cli({"--rules", rules, "--category", "lint", "test/fixtures/clean"})
+      assert_equal(code, 2, out)
+   end)
+
+   it("is off unless asked for", function()
+      assert_equal(#hits("os.getenv('a', 'b')\n", {}), 0)
+   end)
+end)
