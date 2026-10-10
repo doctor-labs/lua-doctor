@@ -260,4 +260,9 @@ register {code = "952", severity = "low", cwe = "CWE-0", confidence = "medium",
 register {code = "953", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "{action} read-only global variable ({name})", fields = {"action"}}
 
+-- luacheck 142 / 143: the global exists but the field does not (`os.execte`,
+-- `string.fromat`). The field is named in the finding's name as a dotted path.
+register {code = "954", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "{action} undefined field of global ({name})", fields = {"action"}}
+
 return codes

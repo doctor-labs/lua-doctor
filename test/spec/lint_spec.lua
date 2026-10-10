@@ -152,3 +152,47 @@ describe("953 setting a read-only global (#336)", function()
       assert_equal(#names_of("print = nil\n", {}, "953"), 0)
    end)
 end)
+
+describe("954 undefined field of a global (#338)", function()
+   local function found(source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == "954" then out[#out + 1] = finding end
+      end
+      return out
+   end
+
+   it("reports reading a field the library does not have, naming the path", function()
+      local hits = found('local t = string.fromat("%d", 3)\n')
+      assert_equal(#hits, 1)
+      assert_equal(hits[1].name, "string.fromat")
+      assert_match(hits[1].message, "^accessing undefined field of global", hits[1].message)
+   end)
+
+   it("reports writing one as setting", function()
+      local hits = found("table.mapp = print\n")
+      assert_equal(#hits, 1)
+      assert_match(hits[1].message, "^setting undefined field", hits[1].message)
+   end)
+
+   it("a real field is not reported", function()
+      assert_equal(#found("local t = string.format('%d', 3)\nprint(os.time())\n"), 0)
+   end)
+
+   it("a nested path is named in full", function()
+      assert_equal(found("local n = math.huge.nope\n")[1].name, "math.huge.nope")
+   end)
+
+   it("the Lua standard decides which fields exist", function()
+      assert_equal(#found("local x = table.maxn(t)\n", {category = {"lint"}, std = "lua54"}), 1)
+      assert_equal(#found("local x = table.maxn(t)\n", {category = {"lint"}, std = "lua51"}), 0)
+   end)
+
+   it("a platform table accepts any field", function()
+      assert_equal(#found("local x = luci.sys.whatever\n", {category = {"lint"}, std = "+luci"}), 0)
+   end)
+
+   it("is off unless asked for", function()
+      assert_equal(#found("local t = string.fromat(1)\n", {}), 0)
+   end)
+end)
