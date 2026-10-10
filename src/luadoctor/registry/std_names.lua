@@ -100,6 +100,12 @@ function std_names.status(std, parts)
    return "defined"
 end
 
+--- Does the Lua standard itself define this global (`os`, `load`), as opposed to
+-- a name only a platform profile makes up?
+function std_names.is_standard_global(std, name)
+   return std.base.fields[name] ~= nil
+end
+
 --- Is `name` a global the std defines, or a platform root?
 function std_names.defines_global(std, name)
    return def_of(std, name) ~= nil

@@ -112,6 +112,14 @@ register {code = "712", severity = "high", cwe = "CWE-78", confidence = "high",
 register {code = "713", severity = "medium", cwe = "CWE-0", confidence = "medium",
    message = "call to an undefined name that looks like the execution sink {likely} ({name}); the call is not analyzed"}
 
+-- A local that is not the library under another spelling replaces it for every
+-- call in its scope, and the declared sinks and sources on that library stop
+-- matching there. Medium for the same reason as 713: a defect in what the scan
+-- can see, not an exploit.
+register {code = "714", severity = "medium", cwe = "CWE-0", confidence = "medium",
+   message = "local variable replaces a standard library that APIs are declared on, "
+      .. "so calls through it are not analyzed ({name})"}
+
 -- ---------------------------------------------------------------- 7xx firmware
 
 register {code = "721", severity = "high", cwe = "CWE-1236",

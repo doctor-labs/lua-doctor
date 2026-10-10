@@ -60,3 +60,46 @@ describe("a misspelled execution sink (#330)", function()
       assert_true(not codes_of("os.frobnicate(cmd)\n")["713"], "nothing it could be")
    end)
 end)
+
+describe("a local that shadows a sink's library (#331)", function()
+   it("local os = require(other) is reported as 714", function()
+      assert_true(codes_of('local os = require("fakeos")\nos.execute(cmd)\n')["714"], "expected a 714")
+   end)
+
+   it("a local io bound to some other value is reported", function()
+      assert_true(codes_of("local x = {}\nlocal io = x\n")["714"], "expected a 714")
+   end)
+
+   it("localising the library itself is not reported", function()
+      assert_true(not codes_of("local os = os\nos.execute(cmd)\n")["714"], "local os = os")
+      assert_true(not codes_of("local os = _G.os\n")["714"], "local os = _G.os")
+      assert_true(not codes_of('local os = require "os"\n')["714"], 'require "os"')
+   end)
+
+   it("a table that carries the library's functions is not reported", function()
+      assert_true(not codes_of("local io = {popen = f}\n")["714"], "table constructor")
+   end)
+
+   it("an unrelated local is not reported", function()
+      assert_true(not codes_of('local fakeos = require("fakeos")\n')["714"], "different name")
+   end)
+
+   it("a local that merely names a platform table is not reported", function()
+      assert_true(not codes_of('local luci = require("other")\n', "+luci")["714"],
+         "luci is not a standard library")
+   end)
+
+   it("a second shadow of the same name is reported once", function()
+      local report = api.check_source('local os = require("fakeos")\nlocal os = os\n')
+      local n = 0
+      for _, finding in ipairs(report) do if finding.code == "714" then n = n + 1 end end
+      assert_true(n == 1, "expected one 714, got " .. n)
+   end)
+end)
+
+describe("714 and a localised require", function()
+   it("local os = require 'os' is not reported when require is itself a local", function()
+      assert_true(not codes_of('local require = require\nlocal os = require "os"\n')["714"],
+         "the corpus's luci-lib-httpclient receiver.lua idiom")
+   end)
+end)
