@@ -254,4 +254,10 @@ register {code = "951", severity = "low", cwe = "CWE-0", confidence = "medium",
 register {code = "952", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "{action} non-standard global variable ({name})", fields = {"action"}}
 
+-- luacheck 121 (`os = nil`) and 122 (`string.format = f`): the std marks the
+-- name read-only. Overwriting a standard function is also how a script swaps in
+-- its own `os.execute`, so this is the lint most worth reading in firmware.
+register {code = "953", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "{action} read-only global variable ({name})", fields = {"action"}}
+
 return codes

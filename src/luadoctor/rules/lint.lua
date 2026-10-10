@@ -7,6 +7,7 @@
 --
 --   951  accessing an undefined variable        (luacheck 113, selene undefined_variable)
 --   952  setting or mutating a non-standard global (luacheck 111, 112)
+--   953  setting a read-only global or a field of one (luacheck 121, 122)
 --
 -- Opt-in: see rules/lint_gate.lua. Code range 950-979.
 local M = {}
@@ -23,6 +24,8 @@ local EMITTED = {
    ["113"] = {code = "951"},
    ["111"] = {code = "952", action = "setting"},
    ["112"] = {code = "952", action = "mutating"},
+   ["121"] = {code = "953", action = "setting"},
+   ["122"] = {code = "953", action = "setting a field of"},
 }
 
 -- The raw warnings of detect_globals, once per file: several lint rules read
