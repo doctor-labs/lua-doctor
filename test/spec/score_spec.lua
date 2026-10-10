@@ -4,7 +4,7 @@ local assert_true, assert_equal = harness.assert_true, harness.assert_equal
 
 local api = require "luadoctor.api"
 
-local CATEGORIES = {exec = true, firmware = true, payload = true, artifact = true, meta = true}
+local CATEGORIES = {exec = true, firmware = true, payload = true, artifact = true, meta = true, lint = true}
 
 describe("health score", function()
    it("is 100 with every category at zero for a clean source", function()
@@ -12,7 +12,8 @@ describe("health score", function()
       assert_equal(result.score, 100, "no finding costs nothing")
       assert_equal(result.label, "good", "100 is good")
       for id in pairs(CATEGORIES) do
-         assert_equal(result.categories[id], 0, id .. " starts at zero")
+         -- lint is opt-in and counted only when a report has one.
+         assert_equal(result.categories[id] or (id == "lint" and 0), 0, id .. " starts at zero")
       end
    end)
 
@@ -64,7 +65,7 @@ describe("health score", function()
 end)
 
 describe("rule categories", function()
-   it("gives every registered code one of the five categories", function()
+   it("gives every registered code one of the categories", function()
       for _, rule in ipairs(api.rule_catalogue()) do
          assert_true(CATEGORIES[rule.category],
             "code " .. rule.code .. " has no category (got " .. tostring(rule.category) .. ")")

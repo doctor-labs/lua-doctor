@@ -246,8 +246,9 @@ local function run(argv)
       return fail("--view expects list or doctor")
    end
    for _, name in ipairs(opts.category or {}) do
-      if not ({exec = true, firmware = true, payload = true, artifact = true, meta = true})[name] then
-         return fail("--category expects one of exec, firmware, payload, artifact, meta")
+      if not ({exec = true, firmware = true, payload = true, artifact = true, meta = true,
+         lint = true})[name] then
+         return fail("--category expects one of exec, firmware, payload, artifact, meta, lint")
       end
    end
 

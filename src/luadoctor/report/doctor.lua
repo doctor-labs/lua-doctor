@@ -99,7 +99,7 @@ function doctor.render(list, opts)
    local counts = plural(#list, "finding") .. " in " .. plural(file_count, "file")
    if #list > 0 then counts = counts .. ": " .. summary.tally(list, "severity", SEVERITIES) end
    local families = {}
-   for _, id in ipairs(categories.order()) do
+   for _, id in ipairs(categories.order(result.categories)) do
       if result.categories[id] > 0 then families[#families + 1] = id .. " " .. result.categories[id] end
    end
    out[#out + 1] = "┌" .. string.rep("─", BOX_WIDTH) .. "┐"

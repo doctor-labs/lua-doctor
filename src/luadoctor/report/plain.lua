@@ -37,7 +37,7 @@ function plain.score_line(report)
    -- category with nothing in it is left out, so the line stays short.
    local summary = score.summarize(report)
    local counted = {}
-   for _, id in ipairs(categories.order()) do
+   for _, id in ipairs(categories.order(summary.categories)) do
       if summary.categories[id] > 0 then
          counted[#counted + 1] = id .. " " .. summary.categories[id]
       end

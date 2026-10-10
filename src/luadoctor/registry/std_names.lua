@@ -52,7 +52,7 @@ function std_names.current(opts)
    local extra = {}
    local function add_root(root)
       if root and root ~= "" and not root:find("[%*%?]") and not base.fields[root] then
-         extra[root] = extra[root] or {other_fields = true}
+         extra[root] = extra[root] or {other_fields = true, read_only = false}
       end
    end
    local function from_entries(list)
@@ -98,6 +98,42 @@ function std_names.status(std, parts)
       end
    end
    return "defined"
+end
+
+--- luacheck's verdict on a global and the fields indexed from it: "undefined",
+-- "read_only" or "global" (defined and writable). `indexing` is the list
+-- detect_globals records (a field name, `true` for a key that may be a string,
+-- `false` for a key that is not one); `depth` limits how many parts are judged
+-- (default: all of them). This is luacheck's own walk, so 113/121/122/142/143
+-- mean here what they mean there.
+function std_names.field_status(std, name, indexing, depth)
+   local def = def_of(std, name)
+   if not def then return "undefined" end
+   local defined, read_only = true, true
+   if def.read_only ~= nil then read_only = def.read_only end
+
+   for i = 2, depth or ((indexing and #indexing or 0) + 1) do
+      local key = indexing[i - 1]
+      if key == true then
+         if (def.fields and next(def.fields)) or def.other_fields then
+            read_only = def.deep_read_only and true or false
+         else
+            defined = false
+         end
+         break
+      elseif key == false then
+         if not def.other_fields then defined = false end
+         break
+      elseif def.fields and def.fields[key] then
+         def = def.fields[key]
+         if def.read_only ~= nil then read_only = def.read_only end
+      else
+         if not def.other_fields then defined = false end
+         break
+      end
+   end
+
+   return defined and (read_only and "read_only" or "global") or "undefined"
 end
 
 --- Does the Lua standard itself define this global (`os`, `load`), as opposed to

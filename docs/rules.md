@@ -180,6 +180,16 @@ statement about its data, not about its code.
   64 levels of nesting, 100000 prototypes). Each is a property of the parser,
   not of the input, and the walk never allocates on a claimed length.
 
+## 95x - lint (opt-in)
+
+Names and library use, judged the way luacheck and selene judge them. Off by
+default, because a firmware tree reports them by the thousand: they run under
+`--category lint` or an `--enable 95` pattern (also `--only`). Range 950-979.
+
+| Code | Severity | CWE | Meaning |
+| --- | --- | --- | --- |
+| 951 | low | CWE-0 | accessing an undefined variable (luacheck 113, selene undefined_variable) |
+
 ## 9xx - meta
 
 | Code | Severity | CWE | Meaning |
