@@ -26,6 +26,7 @@ local platform_api = require "luadoctor.registry.platform_api"
 local codes = require "luadoctor.rules.codes"
 local const_eval = require "luadoctor.util.const_eval"
 local uci_cursor = require "luadoctor.util.uci_cursor"
+local fn_targets = require "luadoctor.engine.fn_targets"
 
 local taint = {}
 
@@ -830,6 +831,26 @@ local function taint_of_call(node, item, state, depth)
             end
          elseif state.returns and state.returns[fn]
                and not state.returning[fn] then
+            set_union_into(result, return_taint(fn, arg_taints, state, depth))
+         end
+      end
+   end
+
+   -- A method call (`M:id(x)`) or a call through a parameter that holds a
+   -- function (`f(v)` inside `apply(f, v)`): the two shapes the branches above
+   -- cannot name. The receiver is the callee's first formal.
+   if not sanitized and state.returns and state.fn_index
+         and (node.tag == "Invoke"
+            or (node.tag == "Call" and node[1] and node[1].tag == "Id" and node[1].var
+               and state.fn_index.params[node[1].var])) then
+      for _, fn in ipairs(fn_targets.targets(state.fn_index, node, item)) do
+         if state.returns[fn] and not state.returning[fn] then
+            local arg_nodes = fn_targets.effective_args(node)
+            local arg_taints = {}
+            for i = 1, #arg_nodes do
+               arg_taints[i] = taint_of_expr(arg_nodes[i], item, state, depth + 1)
+            end
+            spread_dots(arg_nodes, arg_taints, fn)
             set_union_into(result, return_taint(fn, arg_taints, state, depth))
          end
       end
@@ -1782,6 +1803,7 @@ function taint.run(chstate, opts, existing_state)
    if not state.returns then
       state.returns = {}
       state.field_functions = {}
+      state.fn_index = fn_targets.index(chstate)
       for _, line in ipairs(chstate.lines) do
          if line.node and line.node.tag == "Function" then
             local exprs = {}

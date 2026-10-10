@@ -48,6 +48,7 @@ build = {
       ["luadoctor.cli.walk"] = "src/luadoctor/cli/walk.lua",
       ["luadoctor.cli.why_cmd"] = "src/luadoctor/cli/why_cmd.lua",
       ["luadoctor.engine.callgraph"] = "src/luadoctor/engine/callgraph.lua",
+      ["luadoctor.engine.fn_targets"] = "src/luadoctor/engine/fn_targets.lua",
       ["luadoctor.engine.inline_directives"] = "src/luadoctor/engine/inline_directives.lua",
       ["luadoctor.engine.jobs"] = "src/luadoctor/engine/jobs.lua",
       ["luadoctor.engine.interprocedural"] = "src/luadoctor/engine/interprocedural.lua",

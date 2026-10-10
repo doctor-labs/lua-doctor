@@ -454,9 +454,14 @@ than one that does not have the feature.
   same file that hands its argument back is followed, so
   `os.execute(id(http.formvalue("h")))` is reported. With `--whole-program`, the
   return value of a function in a module bound with `local m = require "mod"`
-  (e.g. `m.id(x)`, or `m:id(x)`) is followed too. A method call on any other
-  object, a function passed as a value, and a `require(...)` called inline inside
-  an expression are not: that flow is missed.
+  (e.g. `m.id(x)`, or `m:id(x)`) is followed too. Within one file, a method call
+  on a table the file builds (`function M:run(c)` called as `M:run(x)`, or
+  `M.run(x)`), a function stored in a table field, and a function passed to a
+  helper that calls it (`apply(cb, x)` with `function apply(f, v) f(v) end`) are
+  followed, for the argument flow and the return value. A method call on an
+  object built at run time or passed in, a function returned from a function or
+  chosen by a computed key, and a `require(...)` called inline inside an
+  expression are not: that flow is missed.
 - **Tables are tainted whole.** A table that was given a tainted element
   (`argv[#argv+1] = v`, `table.insert`) is tainted, and so is every element read
   back from it by a computed index or a loop; a named field stays exact

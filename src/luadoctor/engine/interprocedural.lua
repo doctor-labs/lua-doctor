@@ -55,6 +55,11 @@ local function bind_call(state, chstate, site)
 
    local vars, varargs = taint_engine.formals_of(function_node)
    local arguments = site.args
+   -- A method call passes its receiver as the callee's first formal (`self`).
+   if site.receiver then
+      arguments = {site.receiver}
+      for _, arg in ipairs(site.args) do arguments[#arguments + 1] = arg end
+   end
    local bound = false
 
    -- Fold an argument's taint into one formal, at most once per descriptor. A
