@@ -7,7 +7,6 @@
 -- (sanitizers). Adding a platform is a data change, not a code change.
 local util = require "luadoctor.util.util"
 local stdlib_args = require "luadoctor.registry.stdlib_args"
-local stdlib_args = require "luadoctor.registry.stdlib_args"
 
 local platform_api = {}
 
@@ -396,19 +395,6 @@ function platform_api.params_for(path)
    end
    if declared then return declared.params, declared.pattern end
    return stdlib_args[path], path
-end
-
--- The parameter list of a callee path: the `params` a profile declared on a
--- sink, source, shape or propagator entry (most specific entry wins), else the
--- standard library's (registry/stdlib_args.lua). nil when nothing declares one.
-function platform_api.params_for(path)
-   local declared
-   for _, list in ipairs({default_sinks, default_shapes, platform_sources, default_propagators}) do
-      local best = best_match_where(list, path, function(entry) return entry.params ~= nil end)
-      if best and (not declared or specificity(best) < specificity(declared)) then declared = best end
-   end
-   if declared then return declared.params end
-   return stdlib_args[path]
 end
 
 function platform_api.add_shapes(list)
