@@ -106,6 +106,12 @@ register {code = "712", severity = "high", cwe = "CWE-78", confidence = "high",
    message = "shell metacharacters from untrusted data are not quoted ({name})",
    fields = {"sink", "source", "sources", "trace", "snippet", "metachars"}}
 
+-- The call fails at run time (an undefined name is nil) and the taint engine has
+-- no sink to match, so a finding the intended API would have produced is
+-- missing. Registered medium: it is a defect in the file, not an exploit.
+register {code = "713", severity = "medium", cwe = "CWE-0", confidence = "medium",
+   message = "call to an undefined name that looks like the execution sink {likely} ({name}); the call is not analyzed"}
+
 -- ---------------------------------------------------------------- 7xx firmware
 
 register {code = "721", severity = "high", cwe = "CWE-1236",
