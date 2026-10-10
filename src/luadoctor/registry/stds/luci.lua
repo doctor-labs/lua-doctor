@@ -2,6 +2,15 @@
 -- an HTTP parameter reaches a shell command on a router.
 return {
    name = "luci",
+   -- What a controller or CBI file may call without defining it: the functions of
+   -- luci.dispatcher (the file's environment is set with __index = luci.dispatcher;
+   -- see modules/luci-base/luasrc/dispatcher.lua) and the translation helpers of
+   -- luci.i18n. Read by the lint rules, which would otherwise call every `entry(...)`
+   -- an undefined variable.
+   globals = {read_globals = {
+      "entry", "node", "lookup", "firstchild", "alias", "rewrite", "call", "post",
+      "template", "cbi", "arcombine", "form", "_", "translate", "translatef",
+   }},
    sources = {
       {pattern = "luci.http.formvalue", id = "luci.http.formvalue",
          name = "LuCI request parameter", confidence = "certain"},

@@ -43,6 +43,7 @@ local BOOLEAN_FLAGS = {
    ["--no-color"] = "no_color",
    ["--verbose"] = "verbose",
    ["--staged"] = "staged",
+   ["--allow-defined"] = "allow_defined",
    ["--include-untracked"] = "include_untracked",
    ["--interactive"] = "interactive",
    ["--no-interactive"] = "no_interactive",
@@ -191,6 +192,8 @@ selection:
   --base <ref>               with --scope changed: the ref to compare with
   --include-untracked        with --scope changed: also scan new, untracked files
   --staged                   only files staged in git (for a pre-commit hook)
+  --allow-defined            lint: a global the file assigns counts as defined where it is read
+                             (selene's undefined_variable; luacheck's allow_defined)
 
 analysis:
   --whole-program            resolve calls across files. Follows require edges

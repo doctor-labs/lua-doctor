@@ -246,7 +246,7 @@ register {code = "904", severity = "medium", cwe = "CWE-0", confidence = "certai
 -- luacheck 113 / selene undefined_variable. Low: the std is a list of names, and
 -- a platform can provide one it does not list. Opt-in, see rules/lint_gate.lua.
 register {code = "951", severity = "low", cwe = "CWE-0", confidence = "medium",
-   message = "accessing undefined variable ({name})"}
+   message = "accessing undefined variable ({name}){note}", fields = {"note"}}
 
 -- luacheck 111 (setting a global the std does not define) and 112 (mutating one,
 -- `foo.bar = 1`). The `action` field says which; the finding is about a global

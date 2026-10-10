@@ -6,6 +6,8 @@
 -- findings and gives each luacheck code its lua-doctor code.
 --
 --   951  accessing an undefined variable        (luacheck 113, selene undefined_variable)
+--        With allow_defined, a global the file assigns is defined where it is
+--        read, as selene (and luacheck's option of that name) have it.
 --   952  setting or mutating a non-standard global (luacheck 111, 112)
 --   953  setting a read-only global or a field of one (luacheck 121, 122)
 --   954  setting or accessing an undefined field of a global (luacheck 142, 143)
@@ -85,6 +87,26 @@ local function field_path(warning)
    return table.concat(parts, ".")
 end
 
+-- luacheck's allow_defined: every whole-name set defines the global. A defined
+-- name is no longer undefined to read (113) or mutate (112), and its defining
+-- set is not a finding (luacheck calls an unread one 131, unused global, which
+-- lua-doctor does not report).
+local function defined_in_file(raw)
+   local defined = {}
+   for _, warning in ipairs(raw) do
+      if warning.code == "111" then defined[warning.name] = true end
+   end
+   return defined
+end
+
+-- selene's "this might be a name from another standard library" note, for the
+-- built-in profiles that do define it.
+local function note_for(name)
+   local profiles_found = std_names.profiles_defining(name)
+   if #profiles_found == 0 then return "" end
+   return ("; defined by --std +%s"):format(table.concat(profiles_found, " or +"))
+end
+
 local function detect_names(ctx)
    local wanted = {}
    local any = false
@@ -97,12 +119,15 @@ local function detect_names(ctx)
    if not any then return end
 
    local std = std_names.current(ctx.opts)
-   for _, warning in ipairs(raw_warnings(ctx.chstate)) do
-      local luacheck_code = classify(std, warning)
+   local raw = raw_warnings(ctx.chstate)
+   local defined = ctx.opts.allow_defined and defined_in_file(raw) or {}
+   for _, warning in ipairs(raw) do
+      local luacheck_code = not defined[warning.name] and classify(std, warning)
       local target = luacheck_code and wanted[luacheck_code]
       if target then
          ctx:emit(target.code, span(ctx, warning),
-            {name = target.code == "954" and field_path(warning) or warning.name, action = target.action})
+            {name = target.code == "954" and field_path(warning) or warning.name, action = target.action,
+               note = target.code == "951" and note_for(warning.name) or nil})
       end
    end
 end
