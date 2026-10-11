@@ -78,3 +78,39 @@ describe("951 accessing an undefined variable (#334)", function()
       assert_match(lint_out, "lint 1", lint_out)
    end)
 end)
+
+describe("952 setting or mutating a non-standard global (#335)", function()
+   it("reports assigning a global the std does not define as setting", function()
+      local found
+      for _, finding in ipairs(api.check_source("counter = 0\n", LINT)) do
+         if finding.code == "952" then found = finding end
+      end
+      assert_true(found, "expected a 952")
+      assert_match(found.message, "^setting non%-standard global variable %(counter%)", found.message)
+   end)
+
+   it("reports writing a field of one as mutating", function()
+      local found
+      for _, finding in ipairs(api.check_source("config.debug = true\n", LINT)) do
+         if finding.code == "952" then found = finding end
+      end
+      assert_true(found, "expected a 952")
+      assert_match(found.message, "^mutating", found.message)
+   end)
+
+   it("a function declared as a global is a set", function()
+      assert_equal(#names_of("function helper() end\n", nil, "952"), 1)
+   end)
+
+   it("a local is not reported", function()
+      assert_equal(#names_of("local counter = 0\ncounter = counter + 1\n", nil, "952"), 0)
+   end)
+
+   it("a global a platform profile declares is not reported", function()
+      assert_equal(#names_of("luci.foo = 1\n", {category = {"lint"}, std = "+luci"}, "952"), 0)
+   end)
+
+   it("is off unless asked for", function()
+      assert_equal(#names_of("counter = 0\n", {}, "952"), 0)
+   end)
+end)

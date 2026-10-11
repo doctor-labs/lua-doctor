@@ -248,4 +248,10 @@ register {code = "904", severity = "medium", cwe = "CWE-0", confidence = "certai
 register {code = "951", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "accessing undefined variable ({name})"}
 
+-- luacheck 111 (setting a global the std does not define) and 112 (mutating one,
+-- `foo.bar = 1`). The `action` field says which; the finding is about a global
+-- that leaks into the shared environment, which is also how a sandbox is escaped.
+register {code = "952", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "{action} non-standard global variable ({name})", fields = {"action"}}
+
 return codes

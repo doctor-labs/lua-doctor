@@ -189,6 +189,7 @@ default, because a firmware tree reports them by the thousand: they run under
 | Code | Severity | CWE | Meaning |
 | --- | --- | --- | --- |
 | 951 | low | CWE-0 | accessing an undefined variable (luacheck 113, selene undefined_variable) |
+| 952 | low | CWE-0 | setting or mutating a non-standard global variable (luacheck 111, 112) |
 
 ## 9xx - meta
 
