@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows
 - Opt-in lints 971-972: unused label (luacheck 521) and division by literal zero (selene divide_by_zero) (#347, #380).
 - Opt-in lints 973-975: line too long, empty statement, multiple statements on one line (#354, #350, #373).
 - Opt-in lints 976-977: trailing whitespace and a space before a tab in indentation (#353).
+- Opt-in lints 978-979: _G usage (selene global_usage) and a comparison passed to type() (selene type_check_inside_call) (#375, #378).
 - Opt-in lints 959-962 (selene duplicate_keys, compare_nan, constant_table_comparison, almost_swapped) (#367, #368, #369, #370). 959 reports a literal key written twice in one table constructor; 960 reports `==`/`~=` against the NaN literal `0/0` or `-(0/0)`; 961 reports `==`/`~=` against a new table constructor; 962 reports two consecutive single-name assignments `A = B; B = A` that look like a broken swap.
 
 - Opt-in lints 963-965: empty if branch, empty loop body and reversed numeric for (luacheck 542/571, selene empty_if/empty_loop/suspicious_reverse_loop) (#349, #361, #362, #351, #363).
