@@ -3,6 +3,10 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+- Taint follows a method call and a function held as a value, within one file (#327, #328). `M:run(x)` and `M.run(x)` bind the callee's parameters when `M` is a table the file builds (`function M:run`, `function M.run`, `M.run = f`, `{run = f}`), a method call's receiver is the callee's first formal, a function passed to a helper that calls it (`apply(cb, x)`) is bound to the helper's parameter, and the return value of a method or callback carries its argument's taint. Computed keys (`M[k](x)`) and a function returned from a function are not followed. New `src/luadoctor/engine/fn_targets.lua`, `test/spec/method_callback_taint_spec.lua`.
+
 ## 0.6.1 - 2026-10-10
 
 - Renamed: the tool is now **Lua Doctor**, `lua-doctor` (was `luasec`). This is a breaking rename for every user-facing name: the command (`bin/lua-doctor`; no `luasec` alias is kept), the npm package (`@doctor-labs/lua-doctor`; the unscoped npm name is taken by another project, the command stays `lua-doctor`), the rock (`lua-doctor`, was `luasec-scanner`), the Homebrew formula, the GitHub Action (`doctor-labs/lua-doctor`), the `doctor/1` envelope `tool` field and `score.model` (`lua-doctor/1`), the config file (`lua-doctor.config.lua`), the environment variables (`LUA_DOCTOR_*`, was `LUASEC_*`), the SARIF `partialFingerprints.luaDoctorFinding` key, the yara pack (`yara/lua_doctor_signatures.yar`, rule names `lua_doctor_sig_*`), the installed skill, Cursor rule and AGENTS.md markers, and the cache directory (`~/.cache/lua-doctor`). The in-source directive is `-- lua-doctor: ignore ...`; the old `-- luasec: ignore ...` spelling is still honoured. Repository links point to `https://github.com/doctor-labs/lua-doctor`. The Lua module namespace is renamed too: `require "luasec.api"` is now `require "luadoctor.api"` (sources in `src/luadoctor/`). Not published yet: the next release publishes `@doctor-labs/lua-doctor` and deprecates the old `luasec` package.

@@ -10,6 +10,7 @@
 -- carries untrusted data stays silent.
 local platform_api = require "luadoctor.registry.platform_api"
 local taint_engine = require "luadoctor.engine.taint"
+local fn_targets = require "luadoctor.engine.fn_targets"
 
 local callgraph = {}
 
@@ -142,6 +143,7 @@ end
 function callgraph.call_sites(chstate)
    local sites = {}
    local globals = globals_of(chstate)
+   local index = fn_targets.index(chstate)
 
    -- Nested calls are sites too: `ipairs(parse(x))` and `os.execute(run(x))`
    -- evaluate `parse` and `run` just as `local r = parse(x)` does, and a callee
@@ -152,9 +154,15 @@ function callgraph.call_sites(chstate)
       depth = depth or 0
       if type(node) ~= "table" or depth > 64 or node.tag == "Function" then return end
       if node.tag == "Call" or node.tag == "Invoke" then
-         local callee = resolve_callee(node[1], item, globals, 0)
-         if callee then
-            sites[#sites + 1] = {callee = callee, args = args_of(node), item = item}
+         local callees = fn_targets.targets(index, node, item)
+         if #callees == 0 then
+            -- The older rule, kept as the fallback: a plain name, or a
+            -- receiver that is itself a function.
+            callees = {resolve_callee(node[1], item, globals, 0)}
+         end
+         for _, callee in ipairs(callees) do
+            sites[#sites + 1] = {callee = callee, args = args_of(node), item = item,
+               receiver = node.tag == "Invoke" and node[1] or nil}
          end
       end
       for _, child in ipairs(node) do

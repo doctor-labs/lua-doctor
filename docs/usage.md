@@ -990,9 +990,12 @@ function's return value is also followed — `local function id(x) return x end`
 hands taint through — and under `--whole-program` the return value of a function in
 a module bound with `local m = require "mod"` (e.g. `m.id(x)`) is followed too,
 and so is the method spelling of the same call (`m:id(x)`, with the receiver as
-the callee's `self`). A method call on any other object, a function passed as a
-value, and a `require(...)` called inline inside an expression are not: a function
-that hands its argument back is opaque across files in those shapes.
+the callee's `self`). Within one file a method or field function of a table the
+file builds, a function stored in a table field and a function passed to a helper
+that calls it (`apply(cb, x)`) are bound too, for argument flow and for the return
+value. Across files, a method call on any other object, a function passed as a
+value, and a `require(...)` called inline inside an expression are not: a
+function that hands its argument back is opaque across files in those shapes.
 
 A call to a function written onto a global table's field path in another file
 (`gui.a.b.set(t)` with `function gui.a.b.set(cfg) ... end` elsewhere, the shape
@@ -1107,10 +1110,13 @@ missed, which is a known gap, not a clean result.
 
 - **Method calls on objects.** `obj:set(x)` is followed across files when `obj`
   is a module bound with `require` or a global table (`gui.net:set(t)`); a method
-  on any other object (an instance built at run time, a table passed in) is not,
-  and neither is a method call within one file.
-- **Function values.** A function passed as an argument, returned, or stored
-  anywhere other than a route-table literal is not followed. In a route table,
+  on any other object (an instance built at run time, a table passed in) is not.
+  Within one file, `M:run(x)` and `M.run(x)` on a table the file builds are
+  followed.
+- **Function values.** Within one file a function passed to a helper that calls
+  it (`apply(cb, x)`) or stored in a table field the file builds is followed. A
+  function returned from a function, or stored anywhere else than a route-table
+  literal across files, is not followed. In a route table,
   entries added after the literal (`methods.X.methodHandler = f`) and handlers
   defined in the dispatcher's own file are not followed either; a table with more
   than 64 handlers is cut there and reported as a `904`.

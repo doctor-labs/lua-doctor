@@ -234,7 +234,10 @@ the verdict itself are lua-doctor's, and come from the sandbox rather than the p
   another file (`gui.a.b.set(t)`), or through a route-table literal indexed by a
   run-time key (`routes[name].handler(req)`), binds its arguments to the callee's
   parameters, and so does the method spelling of the first two (`m:run(x)`,
-  `gui.net:set(t)`, the receiver bound to `self`). A method call on any other
+  `gui.net:set(t)`, the receiver bound to `self`). Within one file, a method or
+  field function of a table the file builds, a function stored in a table field
+  and a function passed to a helper that calls it (`apply(cb, x)`) are followed
+  too (`engine/fn_targets.lua`). Otherwise a method call on any other
   object, a function passed as a value, and a `require(...)` called inline
   inside an expression are not followed: that flow stops and no finding is
   produced. Firmware that pipes request data through such a helper is missed,
