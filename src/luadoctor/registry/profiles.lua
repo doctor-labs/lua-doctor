@@ -42,6 +42,11 @@ local function validate(name, declaration)
    if declaration.modules ~= nil then
       assert(type(declaration.modules) == "table", "profile " .. name .. ".modules must be a table")
    end
+   if declaration.globals ~= nil then
+      -- luacheck's std format: {read_globals = {...}, globals = {...}}. Names the
+      -- undefined-name checks must accept without a source or sink pattern.
+      assert(type(declaration.globals) == "table", "profile " .. name .. ".globals must be a table")
+   end
    if declaration.global_sources ~= nil then
       assert(type(declaration.global_sources) == "table", "profile " .. name .. ".global_sources must be a list")
       for _, entry in ipairs(declaration.global_sources) do

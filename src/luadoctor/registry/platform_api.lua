@@ -63,6 +63,10 @@ local validators = {}
 -- registry/stds/*. Exact name match, never a local of the same name.
 local global_sources = {}
 
+-- Names a profile declares for the undefined-name checks, in luacheck's std
+-- format. Merged in by profiles; cleared by reset().
+local std_globals = {}
+
 -- Sinks that execute a command. `arg` lists which argument indices matter.
 local default_sinks = {
    {pattern = "os.execute", code = "701", kind = "exec", arg = {1}},
@@ -136,6 +140,7 @@ function platform_api.reset()
    for i = #default_shapes, base_counts.shapes + 1, -1 do default_shapes[i] = nil end
    for i = #platform_sources, 0, -1 do platform_sources[i] = nil end
    for i = #global_sources, 0, -1 do global_sources[i] = nil end
+   for i = #std_globals, 0, -1 do std_globals[i] = nil end
    for i = #entry_points, 0, -1 do entry_points[i] = nil end
    for i = #store_writes, 0, -1 do store_writes[i] = nil end
    for i = #store_reads, 0, -1 do store_reads[i] = nil end
@@ -155,6 +160,7 @@ function platform_api.apply_profile(declaration)
    for _, source in ipairs(declaration.global_sources or {}) do
       global_sources[#global_sources + 1] = source
    end
+   if declaration.globals then std_globals[#std_globals + 1] = declaration.globals end
    for _, entry in ipairs(declaration.entry_points or {}) do
       entry_points[#entry_points + 1] = entry
    end
@@ -218,6 +224,8 @@ end
 
 function platform_api.sources() return default_sources end
 function platform_api.platform_sources() return platform_sources end
+function platform_api.global_source_entries() return global_sources end
+function platform_api.std_globals() return std_globals end
 function platform_api.sinks() return default_sinks end
 function platform_api.shapes() return default_shapes end
 

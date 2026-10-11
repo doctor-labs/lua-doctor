@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows
 ## Unreleased
 
 - Taint follows a method call and a function held as a value, within one file (#327, #328). `M:run(x)` and `M.run(x)` bind the callee's parameters when `M` is a table the file builds (`function M:run`, `function M.run`, `M.run = f`, `{run = f}`), a method call's receiver is the callee's first formal, a function passed to a helper that calls it (`apply(cb, x)`) is bound to the helper's parameter, and the return value of a method or callback carries its argument's taint. Computed keys (`M[k](x)`) and a function returned from a function are not followed. New `src/luadoctor/engine/fn_targets.lua`, `test/spec/method_callback_taint_spec.lua`.
+- New 713 (medium): a call to an undefined name one edit away from a declared sink (`os.execte`, `io.popn`, `loadstrng`). The call fails at run time and matches no sink, so the finding the real API would have produced was silently missing (#330). "Undefined" is judged against luacheck's own standard tables (the `--std` Lua standard, or the union of all of them), the file's own global assignments and the names the loaded profiles declare (new optional `globals` profile field, plus the first segment of every declared pattern, accepted with unknown fields). Only one edit counts: `readfile` is not read as a misspelled `loadfile`. New `src/luadoctor/registry/std_names.lua`, `src/luadoctor/rules/names.lua`, `docs/rules/713.md`, `test/spec/names_spec.lua`. Corpus unchanged.
 
 ## 0.6.1 - 2026-10-10
 

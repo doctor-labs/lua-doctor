@@ -356,7 +356,7 @@ sensitive reaching definitions. On top of that `lua-doctor` adds taint tracking
 with a stable code, severity, confidence, CWE and a source-to-sink trace, and
 plain, JSON, SARIF and HTML reports.
 
-40 registered rule codes, in five categories (from `bin/lua-doctor rules list`):
+41 registered rule codes, in five categories (from `bin/lua-doctor rules list`):
 
 ```sh
 bin/lua-doctor rules list | head -5
@@ -372,7 +372,7 @@ bin/lua-doctor rules list | head -5
 
 | Category | Meaning | Codes |
 | --- | --- | --- |
-| `exec` | command execution and dynamic code sinks | 701–712 |
+| `exec` | command execution and dynamic code sinks | 701–713 |
 | `firmware` | firmware-specific: flash writes, UCI chain, store read-back, sandbox escape, DoS, HTTP header and subrequest writes | 721–731 |
 | `payload` | payload and backdoor patterns | 741–750 |
 | `artifact` | artifact and bytecode triage | 801–805 |

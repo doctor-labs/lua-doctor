@@ -36,6 +36,7 @@ default), `low` (shape only, no proven flow).
 | 710 | critical | CWE-94 | untrusted data reaches dynamic code evaluation |
 | 711 | high | CWE-78 | shell command written as a backtick literal |
 | 712 | high | CWE-78 | shell metacharacters from untrusted data are not quoted |
+| 713 | medium | CWE-0 | call to an undefined name that looks like an execution sink |
 
 ## 7xx - firmware specific
 
