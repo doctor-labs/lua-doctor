@@ -201,6 +201,9 @@ default, because a firmware tree reports them by the thousand: they run under
 | 963 | low | CWE-0 | empty if branch (luacheck 542, selene empty_if) |
 | 964 | low | CWE-0 | empty loop body (selene empty_loop) |
 | 965 | low | CWE-0 | reversed numeric for: counts down without a negative step (luacheck 571, selene suspicious_reverse_loop) |
+| 966 | low | CWE-0 | two branches of an if do the same thing (selene if_same_then_else) |
+| 967 | low | CWE-0 | an elseif repeats an earlier condition, so it never runs (selene ifs_same_cond) |
+| 968 | low | CWE-0 | a table constructor mixes positional and keyed entries (selene mixed_table) |
 
 ## 9xx - meta
 

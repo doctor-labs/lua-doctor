@@ -475,3 +475,38 @@ describe("963-965 empty branches, empty loops, reversed numeric for (#349, #361,
       end
    end)
 end)
+
+describe("966-968 selene if_same_then_else, ifs_same_cond, mixed_table (#365, #366, #371)", function()
+   local function found(code, source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == code then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("966 an if whose branches do the same thing", function()
+      assert_equal(#found("966", 'if x then f(1) else f(1) end\n'), 1)
+      assert_equal(#found("966", 'if x then f(1) elseif y then f(1) end\n'), 1)
+      assert_equal(#found("966", 'if x then f(1) else f(2) end\n'), 0)
+      assert_equal(#found("966", 'if x then else end\n'), 0)
+   end)
+
+   it("967 an elseif that repeats an earlier condition", function()
+      local hits = found("967", 'if a == 1 then f() elseif a == 1 then g() end\n')
+      assert_equal(#hits, 1)
+      assert_equal(#found("967", 'if x then f() elseif y then g() elseif x then h() end\n'), 1)
+      assert_equal(#found("967", 'if a == 1 then f() elseif a == 2 then g() end\n'), 0)
+   end)
+
+   it("968 a table constructor mixing positional and keyed entries", function()
+      assert_equal(#found("968", 'local t = {1, 2, a = 3}\n'), 1)
+      assert_equal(#found("968", 'local t = {1, 2, 3}\nlocal u = {a = 1, b = 2}\nlocal v = {[1] = "x", [2] = "y"}\n'), 0)
+   end)
+
+   it("all three stay off by default", function()
+      for _, code in ipairs({"966", "967", "968"}) do
+         assert_equal(#found(code, 'if x then f(1) elseif x then f(1) end\nlocal t = {1, a = 2}\n', {}), 0)
+      end
+   end)
+end)
