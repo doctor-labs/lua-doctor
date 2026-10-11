@@ -6,8 +6,11 @@
 --   713  a call to an undefined name one edit away from a declared sink
 --        (`os.execte(cmd)`): the call fails at run time and is not analyzed, so
 --        the finding the sink would have produced is silently missing.
+--   714  a local that takes the name of a standard library a sink or source is
+--        declared on (`local os = require "fakeos"`): calls through it no longer
+--        resolve to the declared API, so they are not analyzed.
 --
--- Code this module owns: 713. See docs/rules.md.
+-- Codes this module owns: 713, 714. See docs/rules.md.
 local M = {}
 
 local platform_api = require "luadoctor.registry.platform_api"
@@ -114,6 +117,64 @@ local function detect_misspelled_sink(ctx)
 end
 
 detectors[#detectors + 1] = detect_misspelled_sink
+
+-- The standard-library names a declared sink, shape or source hangs off:
+-- `os` for `os.execute` and `os.getenv`, `load` for the bare sink `load`.
+local function sensitive_roots(std)
+   local roots = {}
+   local function take(list)
+      for _, entry in ipairs(list) do
+         local root = entry.pattern:match("^([^%.:%*%?]+)")
+         if root and std_names.is_standard_global(std, root) then roots[root] = true end
+      end
+   end
+   take(platform_api.sinks())
+   take(platform_api.shapes())
+   take(platform_api.platform_sources())
+   take(platform_api.sources())
+   return roots
+end
+
+-- A value that is the library itself under another spelling keeps the sink
+-- resolvable: `local os = os`, `local os = _G.os`, `local os = require "os"`.
+-- A table constructor is also kept, by name (`local io = {popen = f}`).
+local function is_same_library(name, value, roots)
+   if value.tag == "Table" then return true end
+   -- A name that is itself a local was reported where it was declared.
+   if value.tag == "Id" then return value[1] == name or (value.var ~= nil and roots[value[1]] == true) end
+   if value.tag == "Index" then
+      local base, key = value[1], value[2]
+      return base and base.tag == "Id" and not base.var
+         and (base[1] == "_G" or base[1] == "_ENV")
+         and key and key.tag == "String" and key[1] == name
+   end
+   if value.tag == "Call" then
+      local callee, argument = value[1], value[2]
+      return callee and callee.tag == "Id" and callee[1] == "require"
+         and argument and argument.tag == "String" and argument[1] == name
+   end
+   return false
+end
+
+local function detect_shadowed_sink(ctx)
+   local std = std_names.current(ctx.opts)
+   local roots = sensitive_roots(std)
+   for _, line in ipairs(ctx.chstate.lines) do
+      for _, item in ipairs(line.items) do
+         if item.tag == "Local" and item.rhs then
+            for index, target in ipairs(item.lhs or {}) do
+               local value = item.rhs[index]
+               if target.tag == "Id" and roots[target[1]] and value
+                     and not is_same_library(target[1], value, roots) then
+                  ctx:emit("714", target, {name = target[1]})
+               end
+            end
+         end
+      end
+   end
+end
+
+detectors[#detectors + 1] = detect_shadowed_sink
 
 --- The detectors this module contributes, in run order.
 function M.detectors()
