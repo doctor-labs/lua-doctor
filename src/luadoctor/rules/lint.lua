@@ -37,6 +37,11 @@
 --   974  empty statement                        (luacheck 551, selene empty_statement): a stray `;`
 --   975  multiple statements on one line        (selene multiple_statements): more than one
 --        statement begins on the same line, within one block
+--   976  trailing whitespace                    (luacheck 611/612/613/614): a line whose
+--        text ends in a space or tab, except inside a multi-line string (whose spaces
+--        are part of the value)
+--   977  indentation has a space before a tab   (luacheck 621): the leading whitespace of
+--        a line contains a space immediately followed by a tab
 --
 -- Opt-in: see rules/lint_gate.lua. Code range 950-979.
 local M = {}
@@ -948,6 +953,110 @@ local function detect_multiple_statements(ctx)
 end
 
 detectors[#detectors + 1] = detect_multiple_statements
+
+-- ---------------------------------------------------------------- 976
+
+-- luacheck 611/612/613/614. A line whose trailing run of whitespace is not part
+-- of a multi-line string value: either the whole line is spaces/tabs (611), or
+-- trailing whitespace sits on a code line (612) or a comment line (614). Spaces
+-- inside a multi-line string are data, not style, so lines whose
+-- line_endings[line] == "string" are skipped (613).
+local function detect_trailing_whitespace(ctx)
+   if not lint_gate.wanted(ctx.opts, "976") then return end
+
+   local source = ctx.chstate.source
+   local line_offsets = ctx.chstate.line_offsets
+   local line_lengths = ctx.chstate.line_lengths
+   local line_endings = ctx.chstate.line_endings
+
+   local num_lines = #line_offsets
+   for line = 1, num_lines do
+      local length = line_lengths[line]
+      if length and length > 0 then
+         local line_offset = line_offsets[line] or 0
+         -- Mirror luacheck's detect_bad_whitespace: anchor at the line start and
+         -- capture the leading non-newline tail, then the trailing whitespace run
+         -- and the line terminator that follows it.
+         local trailing_ws_pattern
+         if line == num_lines then
+            trailing_ws_pattern = "^[^\r\n]-()[ \t\f\v]+()[\r\n]?$"
+         else
+            trailing_ws_pattern = "^[^\r\n]-()[ \t\f\v]+()[\r\n]"
+         end
+         local _, _, trailing_ws_start_byte, line_end_byte =
+            source:find(trailing_ws_pattern, line_offset)
+         if trailing_ws_start_byte then
+            local trailing_ws_end_byte = line_end_byte - 1
+            local trailing_ws_start_char = line_offset + length - (line_end_byte - trailing_ws_start_byte)
+            if trailing_ws_start_char == line_offset then
+               -- The trailing run starts at the very first byte: the whole line is
+               -- spaces/tabs (luacheck 611). Whitespace-only lines are never string
+               -- continuations, so they are always reported.
+               ctx:emit("976", {
+                  tag = "Id",
+                  line = line,
+                  offset = line_offset,
+                  end_offset = trailing_ws_end_byte,
+               }, {msg = "line contains only whitespace"})
+            elseif line_endings[line] ~= "string" then
+               -- Trailing whitespace on a code line (612) or a comment line (614).
+               -- Spaces inside a multi-line string are data (613), so skip them.
+               ctx:emit("976", {
+                  tag = "Id",
+                  line = line,
+                  offset = trailing_ws_start_char,
+                  end_offset = trailing_ws_end_byte,
+               }, {msg = "trailing whitespace"})
+            end
+         end
+      end
+   end
+end
+
+detectors[#detectors + 1] = detect_trailing_whitespace
+
+-- ---------------------------------------------------------------- 977
+
+-- luacheck 621. Indentation whose leading whitespace contains a space
+-- immediately followed by a tab (e.g. " \t"). Pure-whitespace lines are already
+-- 976's domain, so they are skipped, and a line continuing a multi-line string
+-- (line_endings[line - 1] == "string") is skipped: its leading spaces are part
+-- of the string value, not indentation.
+local function detect_space_before_tab(ctx)
+   if not lint_gate.wanted(ctx.opts, "977") then return end
+
+   local source = ctx.chstate.source
+   local line_offsets = ctx.chstate.line_offsets
+   local line_lengths = ctx.chstate.line_lengths
+   local line_endings = ctx.chstate.line_endings
+
+   for line = 2, #line_offsets do
+      local length = line_lengths[line]
+      if length and length > 0 then
+         local line_offset = line_offsets[line] or 0
+         -- A continuation line of a multi-line string: its leading whitespace is
+         -- string content, not indentation.
+         if line_endings[line - 1] ~= "string" then
+            -- Match leading whitespace that contains a space immediately followed
+            -- by a tab: `^[ \t\f\v]* [ \t\f\v]*` anchored with a space-then-tab in
+            -- the middle. luacheck uses `^[ \t\f\v]- \t[ \t\f\v]*`.
+            local run_start, run_end = source:find("^[ \t\f\v]- \t[ \t\f\v]*", line_offset)
+            if run_start then
+               -- `run_start` is the line's first byte; `run_end` is one past the
+               -- last byte of the leading run. Emit at the leading run's start.
+               ctx:emit("977", {
+                  tag = "Id",
+                  line = line,
+                  offset = line_offset,
+                  end_offset = run_end - 1,
+               })
+            end
+         end
+      end
+   end
+end
+
+detectors[#detectors + 1] = detect_space_before_tab
 
 --- The detectors this module contributes, in run order.
 function M.detectors()

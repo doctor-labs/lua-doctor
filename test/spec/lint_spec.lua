@@ -616,3 +616,34 @@ describe("973-975 line too long, empty statement, multiple statements on a line 
       end
    end)
 end)
+
+describe("976-977 trailing whitespace, mixed indentation (#353)", function()
+   local function found(code, source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == code then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("976 trailing whitespace on code, comment and blank lines", function()
+      assert_equal(#found("976", "local a = 1 \nlocal b = 2\t\n"), 2)
+      assert_equal(#found("976", "-- note  \n"), 1)
+      assert_equal(#found("976", "local a = 1\n   \nlocal b = 2\n"), 1)  -- a whitespace-only line
+      assert_equal(#found("976", "local a = 1\n\nlocal b = 2\n"), 0)
+      -- inside a long string the spaces are part of the value
+      assert_equal(#found("976", "local s = [[\nkeep  \n]]\n"), 0)
+   end)
+
+   it("977 a space before a tab in the indentation", function()
+      local hits = found("977", "if x then\n \tprint(x)\nend\n")
+      assert_equal(#hits, 1)
+      assert_equal(#found("977", "if x then\n\tprint(x)\n    print(x)\n\t  print(x)\nend\n"), 0)
+   end)
+
+   it("both stay off by default", function()
+      for _, code in ipairs({"976", "977"}) do
+         assert_equal(#found(code, "local a = 1 \nif a then\n \tprint(a)\nend\n", {}), 0)
+      end
+   end)
+end)

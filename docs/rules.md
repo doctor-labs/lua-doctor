@@ -211,6 +211,8 @@ default, because a firmware tree reports them by the thousand: they run under
 | 973 | low | CWE-0 | line too long: a line longer than 120 characters (luacheck 631) |
 | 974 | low | CWE-0 | empty statement: a stray `;` not following a statement (luacheck 551, selene empty_statement) |
 | 975 | low | CWE-0 | multiple statements on one line: more than one statement begins on the same line in a block (selene multiple_statements) |
+| 976 | low | CWE-0 | trailing whitespace: a line ends in a space or tab, or is all spaces/tabs (luacheck 611/612/613/614) |
+| 977 | low | CWE-0 | indentation has a space before a tab (luacheck 621) |
 
 ## 9xx - meta
 
