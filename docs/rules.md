@@ -208,6 +208,9 @@ default, because a firmware tree reports them by the thousand: they run under
 | 970 | low | CWE-0 | parentheses around the whole condition of an if, elseif, while or until (selene parenthese_conditions) |
 | 971 | low | CWE-0 | unused label: a named label no `goto` in the same function jumps to (luacheck 521) |
 | 972 | low | CWE-0 | division by literal zero: a `/` or `%` whose right operand is the literal 0 (selene divide_by_zero) |
+| 973 | low | CWE-0 | line too long: a line longer than 120 characters (luacheck 631) |
+| 974 | low | CWE-0 | empty statement: a stray `;` not following a statement (luacheck 551, selene empty_statement) |
+| 975 | low | CWE-0 | multiple statements on one line: more than one statement begins on the same line in a block (selene multiple_statements) |
 
 ## 9xx - meta
 

@@ -579,3 +579,40 @@ describe("971-972 unused label, division by literal zero (#347, #380)", function
       end
    end)
 end)
+
+describe("973-975 line too long, empty statement, multiple statements on a line (#354, #350, #373)", function()
+   local function found(code, source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == code then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("973 a line longer than 120 characters", function()
+      local long = "local s = '" .. string.rep("x", 120) .. "'\n"
+      local hits = found("973", "local a = 1\n" .. long)
+      assert_equal(#hits, 1)
+      assert_match(hits[1], "132", hits[1])
+      assert_equal(#found("973", "local s = '" .. string.rep("x", 108) .. "'\n"), 0)  -- exactly 120
+   end)
+
+   it("974 an empty statement", function()
+      assert_equal(#found("974", "local a = 1;;\n"), 1)
+      assert_equal(#found("974", ";\nlocal b = 2\n"), 1)
+      assert_equal(#found("974", "local a = 1; local b = 2\n"), 0)  -- a separator, not an empty statement
+   end)
+
+   it("975 two statements on one line", function()
+      local hits = found("975", "local a = 1; local b = 2\nprint(a, b)\n")
+      assert_equal(#hits, 1)
+      -- a statement whose own block sits on the same line is one statement
+      assert_equal(#found("975", "if a then return end\nfor i = 1, 2 do print(i) end\n"), 0)
+   end)
+
+   it("all three stay off by default", function()
+      for _, code in ipairs({"973", "974", "975"}) do
+         assert_equal(#found(code, "local a = 1;; local b = 2 -- " .. string.rep("y", 130) .. "\n", {}), 0)
+      end
+   end)
+end)
