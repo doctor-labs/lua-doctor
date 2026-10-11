@@ -18,6 +18,9 @@
 --   960  comparing with NaN                     (selene compare_nan)
 --   961  comparing with a table constructor     (selene constant_table_comparison)
 --   962  two assignments that look like a broken swap (selene almost_swapped)
+--   963  empty if branch                         (luacheck 542, selene empty_if)
+--   964  empty loop body                         (selene empty_loop)
+--   965  reversed numeric for                    (luacheck 571, selene suspicious_reverse_loop)
 --
 -- Opt-in: see rules/lint_gate.lua. Code range 950-979.
 local M = {}
@@ -425,6 +428,115 @@ local function detect_almost_swapped(ctx)
 end
 
 detectors[#detectors + 1] = detect_almost_swapped
+
+-- ---------------------------------------------------------------- 963
+
+-- A branch of an `if`/`elseif`/`else` whose block has no statements (comments
+-- do not count). One finding per empty branch. luacheck 542 / selene empty_if.
+--
+-- An `If` node is {cond1, block1, cond2, block2, ..., [else_block]}: the branch
+-- blocks sit at every even index, and when the node has an odd length the last
+-- element is the else block.
+local function each_if_branch(node, visit)
+   for index = 2, #node, 2 do
+      visit(node[index])
+   end
+   if #node % 2 == 1 then
+      visit(node[#node])
+   end
+end
+
+local function detect_empty_if_branch(ctx)
+   if not lint_gate.wanted(ctx.opts, "963") then return end
+
+   ctx:each_node(function(node)
+      if node.tag ~= "If" then return end
+      each_if_branch(node, function(block)
+         if type(block) == "table" and #block == 0 then
+            ctx:emit("963", node)
+         end
+      end)
+   end)
+end
+
+detectors[#detectors + 1] = detect_empty_if_branch
+
+-- ---------------------------------------------------------------- 964
+
+-- A `for` (numeric or generic), `while` or `repeat` whose body has no statements
+-- (comments do not count). selene empty_loop.
+--
+-- Fornum (numeric for): {var, from, to, [step], block}  -- block at last index
+-- Forin (generic for):  {iter_vars, explist, block}       -- block at last index
+-- While:               {condition, block}                 -- block at index 2
+-- Repeat:              {block, condition}                 -- block at index 1
+local function detect_empty_loop(ctx)
+   if not lint_gate.wanted(ctx.opts, "964") then return end
+
+   ctx:each_node(function(node)
+      local tag = node.tag
+      local block
+      if tag == "Fornum" or tag == "Forin" then
+         block = node[#node]
+      elseif tag == "While" then
+         block = node[2]
+      elseif tag == "Repeat" then
+         block = node[1]
+      else
+         return
+      end
+      if type(block) == "table" and #block == 0 then
+         ctx:emit("964", node)
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_empty_loop
+
+-- ---------------------------------------------------------------- 965
+
+-- A numeric `for v = A, B do` with NO step, where A and B are both number
+-- literals with A > B, or A is a length operator `#t` and B is the literal 1 (or
+-- 0). Anything not literal is never reported. luacheck 571 / selene
+-- suspicious_reverse_loop.
+--
+-- Fornum node: {var, from, to, [step], block}. No step means the node has exactly 4 elements (the block at index 4).
+--
+-- A number literal folds to a number; a length `#t` is Op{len, t}.
+local function detect_reversed_for(ctx)
+   if not lint_gate.wanted(ctx.opts, "965") then return end
+
+   ctx:each_node(function(node)
+      if node.tag ~= "Fornum" or #node ~= 4 then return end
+
+      local from, to = node[2], node[3]
+      local from_val, to_val
+
+      if from.tag == "Number" then
+         from_val = tonumber(from[1])
+      elseif from.tag == "Op" and from[1] == "len" then
+         from_val = "len"
+      else
+         return
+      end
+
+      if to.tag == "Number" then
+         to_val = tonumber(to[1])
+      else
+         return
+      end
+
+      if from_val == "len" then
+         if to_val == 1 or to_val == 0 then
+            ctx:emit("965", node)
+         end
+      elseif from_val ~= nil and to_val ~= nil and from_val > to_val then
+         ctx:emit("965", node)
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_reversed_for
 
 --- The detectors this module contributes, in run order.
 function M.detectors()

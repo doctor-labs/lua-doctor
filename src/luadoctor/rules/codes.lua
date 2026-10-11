@@ -297,5 +297,16 @@ register {code = "961", severity = "low", cwe = "CWE-0", confidence = "medium",
 -- value: A = B; B = A copies B into both rather than swapping them.
 register {code = "962", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "this looks like a swap that loses a value; use {a}, {b} = {b}, {a}"}
+-- Empty branch / loop / reversed loop, judged the way luacheck and selene judge
+-- them (luacheck 542/571, selene empty_if/empty_loop/suspicious_reverse_loop).
+register {code = "963", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "empty if branch"}
+
+register {code = "964", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "empty loop body"}
+
+register {code = "965", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "this loop does not run: it counts down without a step; add , -1 (e.g. for i = 10, 1, -1)"}
+
 
 return codes

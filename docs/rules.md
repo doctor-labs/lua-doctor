@@ -198,6 +198,9 @@ default, because a firmware tree reports them by the thousand: they run under
 | 960 | low | CWE-0 | comparing with NaN (selene compare_nan) |
 | 961 | low | CWE-0 | comparing with a new table constructor (selene constant_table_comparison) |
 | 962 | low | CWE-0 | two assignments that look like a broken swap (selene almost_swapped) |
+| 963 | low | CWE-0 | empty if branch (luacheck 542, selene empty_if) |
+| 964 | low | CWE-0 | empty loop body (selene empty_loop) |
+| 965 | low | CWE-0 | reversed numeric for: counts down without a negative step (luacheck 571, selene suspicious_reverse_loop) |
 
 ## 9xx - meta
 

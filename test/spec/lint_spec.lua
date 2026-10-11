@@ -433,3 +433,45 @@ describe("959-962 selene correctness lints (#367, #368, #369, #370)", function()
       end
    end)
 end)
+
+describe("963-965 empty branches, empty loops, reversed numeric for (#349, #361, #362, #351, #363)", function()
+   local function found(code, source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == code then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("963 an if branch with nothing in it", function()
+      assert_equal(#found("963", 'if x then end\n'), 1)
+      assert_equal(#found("963", 'if x then f() else end\n'), 1)
+      assert_equal(#found("963", 'if x then f() elseif y then else g() end\n'), 1)
+      assert_equal(#found("963", 'if x then f() else g() end\n'), 0)
+      assert_equal(#found("963", 'if x then -- a comment only\nend\n'), 1)
+   end)
+
+   it("964 a loop with an empty body", function()
+      assert_equal(#found("964", 'for i = 1, 10 do end\n'), 1)
+      assert_equal(#found("964", 'for k, v in pairs(t) do end\n'), 1)
+      assert_equal(#found("964", 'while x do end\n'), 1)
+      assert_equal(#found("964", 'repeat until x\n'), 1)
+      assert_equal(#found("964", 'for i = 1, 10 do f(i) end\n'), 0)
+   end)
+
+   it("965 a numeric for that counts down without a negative step", function()
+      local hits = found("965", 'for i = #t, 1 do f(i) end\n')
+      assert_equal(#hits, 1)
+      assert_match(hits[1], ", -1", hits[1])
+      assert_equal(#found("965", 'for i = 10, 1 do f(i) end\n'), 1)
+      assert_equal(#found("965", 'for i = 10, 1, -1 do f(i) end\n'), 0)
+      assert_equal(#found("965", 'for i = 1, 10 do f(i) end\n'), 0)
+      assert_equal(#found("965", 'for i = n, m do f(i) end\n'), 0)
+   end)
+
+   it("all three stay off by default", function()
+      for _, code in ipairs({"963", "964", "965"}) do
+         assert_equal(#found(code, 'if x then end\nwhile x do end\nfor i = 10, 1 do f(i) end\n', {}), 0)
+      end
+   end)
+end)
