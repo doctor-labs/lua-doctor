@@ -785,7 +785,11 @@ bin/lua-doctor --category lint myfile.lua
 ```
 
 A global the file itself assigns still counts as undefined where it is read,
-as in luacheck's default (`allow_defined` off).
+as in luacheck's default. `--allow-defined` switches to selene's rule: a global
+the file assigns anywhere (a function declared after its use included) is defined,
+and its defining assignment is not reported as 952. A local declared later is not
+a definition. When one of the built-in standards defines a name the message says
+which, e.g. `defined by --std +luci`.
 
 ### Choosing a family
 

@@ -136,6 +136,49 @@ function std_names.field_status(std, name, indexing, depth)
    return defined and (read_only and "read_only" or "global") or "undefined"
 end
 
+local defining_cache
+
+--- The built-in platform profiles whose names include `name` (selene's "this
+-- might be defined by another standard library" note). Computed once.
+function std_names.profiles_defining(name)
+   if not defining_cache then
+      defining_cache = {}
+      for _, profile_name in ipairs(profiles.builtin_names()) do
+         local declaration = profiles.load_builtin(profile_name)
+         if declaration and not declaration.lua_standard then
+            local function take(list)
+               for _, entry in ipairs(list or {}) do
+                  local root = (entry.pattern or ""):match("^([^%.:%*%?]+)")
+                  if root then
+                     defining_cache[root] = defining_cache[root] or {}
+                     defining_cache[root][profile_name] = true
+                  end
+               end
+            end
+            for _, key in ipairs({"sources", "sinks", "shapes", "propagators", "method_sources"}) do
+               take(declaration[key])
+            end
+            for _, entry in ipairs(declaration.global_sources or {}) do
+               if entry.global then
+                  defining_cache[entry.global] = defining_cache[entry.global] or {}
+                  defining_cache[entry.global][profile_name] = true
+               end
+            end
+            local extension = {}
+            if declaration.globals then standards.add_std_table(extension, declaration.globals) end
+            for root in pairs(extension.fields or {}) do
+               defining_cache[root] = defining_cache[root] or {}
+               defining_cache[root][profile_name] = true
+            end
+         end
+      end
+   end
+   local out = {}
+   for profile_name in pairs(defining_cache[name] or {}) do out[#out + 1] = profile_name end
+   table.sort(out)
+   return out
+end
+
 --- Does the Lua standard itself define this global (`os`, `load`), as opposed to
 -- a name only a platform profile makes up?
 function std_names.is_standard_global(std, name)

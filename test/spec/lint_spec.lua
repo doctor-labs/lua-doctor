@@ -196,3 +196,58 @@ describe("954 undefined field of a global (#338)", function()
       assert_equal(#found("local t = string.fromat(1)\n", {}), 0)
    end)
 end)
+
+describe("951 with selene's semantics (#357)", function()
+   local ALLOW = {category = {"lint"}, allow_defined = true}
+
+   it("a global the file assigns is defined where it is read", function()
+      local source = "print(helper)\nfunction helper() end\nhelper()\n"
+      assert_equal(#names_of(source, ALLOW), 0)
+      assert_equal(#names_of(source), 2, "luacheck's default still reports both reads")
+   end)
+
+   it("hoisting reaches a global assigned later, as in selene's hoisting test", function()
+      assert_equal(#names_of("function f() x() print(y) end\nfunction x() end\ny = 3\n", ALLOW), 0)
+   end)
+
+   it("a global that is never assigned is still undefined", function()
+      assert_equal(#names_of("print(helper)\nfunction other() end\n", ALLOW), 1)
+   end)
+
+   it("a local defined later is not a global definition", function()
+      assert_equal(#names_of("function f() z() end\nlocal function z() end\n", ALLOW), 1)
+   end)
+
+   it("the defining set is not reported as a non-standard global", function()
+      assert_equal(#names_of("function helper() end\n", ALLOW, "952"), 0)
+   end)
+
+   it("a field of an assigned global is not reported either", function()
+      assert_equal(#names_of("cfg = {}\ncfg.debug = 1\nprint(cfg.debug)\n", ALLOW, "951"), 0)
+   end)
+
+   it("--allow-defined is the same option on the command line", function()
+      local dir = harness.scratch_dir("lint_allow")
+      local path = dir .. "/t.lua"
+      local handle = assert(io.open(path, "w"))
+      handle:write("print(helper)\nfunction helper() end\n")
+      handle:close()
+      local plain = harness.cli({"--category", "lint", path})
+      assert_match(plain, "%[951%]", plain)
+      local allowed, code = harness.cli({"--category", "lint", "--allow-defined", path})
+      assert_equal(code, 0, allowed)
+   end)
+
+   it("names the built-in standard that defines a name, as selene does", function()
+      local found
+      for _, finding in ipairs(api.check_source("local a = translate('x')\n", LINT)) do
+         if finding.code == "951" then found = finding end
+      end
+      assert_true(found, "expected a 951")
+      assert_match(found.message, "defined by %-%-std %+luci", found.message)
+   end)
+
+   it("the luci standard defines the dispatcher functions a controller calls", function()
+      assert_equal(#names_of("entry({'a'}, call('b'), _('c'))\n", {category = {"lint"}, std = "+luci"}), 0)
+   end)
+end)
