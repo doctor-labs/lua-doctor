@@ -152,7 +152,7 @@ input:
   <path>                     Lua file, or directory to scan recursively
 
 output:
-  --format <name>            plain (default), json, sarif, html
+  --format <name>            plain (default), json, sarif, html, junit, tap, visual_studio
   --json                     the machine-readable doctor/1 envelope (same as --format json)
   --sarif <file>             also write SARIF 2.1.0 to this file
   -o, --output <file>        write the report to a file instead of stdout

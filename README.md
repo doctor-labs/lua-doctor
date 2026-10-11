@@ -263,7 +263,7 @@ at medium confidence or above, quiet if lua-doctor is not on PATH).
 ### For security testers
 
 `lua-doctor why <file>:<line>` shows the source-to-sink flow, a code frame and
-the fix; `--format sarif|json|html` feeds review tooling; `--baseline`
+the fix; `--format sarif|json|html|junit|tap|visual_studio` feeds review tooling; `--baseline`
 reports only what is new; `--whole-program` follows `require` edges across
 files. Raw firmware images must be extracted first (lua-doctor says so instead of
 scanning them), and in an extracted image absolute symlinks resolve against
@@ -675,7 +675,7 @@ The most used flags:
 
 | Flag | What it does |
 | --- | --- |
-| `--format plain\|json\|sarif\|html` | report format (`plain` default) |
+| `--format plain\|json\|sarif\|html\|junit\|tap\|visual_studio` | report format (`plain` default) |
 | `-o, --output <file>` | write the report to a file instead of stdout |
 | `--view list\|doctor` | flat list or grouped digest (digest default on a terminal) |
 | `--verbose` | with the digest: every code and every location |
