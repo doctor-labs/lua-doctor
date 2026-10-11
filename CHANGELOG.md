@@ -5,6 +5,8 @@ All notable changes to this project are documented here. The format follows
 
 ## Unreleased
 
+- Opt-in lints 959-962 (selene duplicate_keys, compare_nan, constant_table_comparison, almost_swapped) (#367, #368, #369, #370). 959 reports a literal key written twice in one table constructor; 960 reports `==`/`~=` against the NaN literal `0/0` or `-(0/0)`; 961 reports `==`/`~=` against a new table constructor; 962 reports two consecutive single-name assignments `A = B; B = A` that look like a broken swap.
+
 - Taint follows a method call and a function held as a value, within one file (#327, #328). `M:run(x)` and `M.run(x)` bind the callee's parameters when `M` is a table the file builds (`function M:run`, `function M.run`, `M.run = f`, `{run = f}`), a method call's receiver is the callee's first formal, a function passed to a helper that calls it (`apply(cb, x)`) is bound to the helper's parameter, and the return value of a method or callback carries its argument's taint. Computed keys (`M[k](x)`) and a function returned from a function are not followed. New `src/luadoctor/engine/fn_targets.lua`, `test/spec/method_callback_taint_spec.lua`.
 - 958 (opt-in lint, low): standard library misuse, selene `incorrect_standard_library_use` (#382), from the parameter lists added in #381: too few required arguments (`string.rep("x")`), a literal of a type the parameter cannot take (`os.getenv({})`, `math.floor("abc")`; a numeric string is a number, Lua coerces) and a pure function called for nothing (`string.upper(s)` as a statement). The finding's text says which. Too many arguments is 957, which is where selene would also put it.
 

@@ -194,6 +194,10 @@ default, because a firmware tree reports them by the thousand: they run under
 | 954 | low | CWE-0 | setting or accessing an undefined field of a global (luacheck 142, 143) |
 | 957 | low | CWE-0 | more arguments passed than the function takes (selene mismatched_arg_count) |
 | 958 | low | CWE-0 | standard library misuse: too few arguments, a literal of the wrong type, an unused result (selene incorrect_standard_library_use) |
+| 959 | low | CWE-0 | duplicate keys in one table constructor (selene duplicate_keys) |
+| 960 | low | CWE-0 | comparing with NaN (selene compare_nan) |
+| 961 | low | CWE-0 | comparing with a new table constructor (selene constant_table_comparison) |
+| 962 | low | CWE-0 | two assignments that look like a broken swap (selene almost_swapped) |
 
 ## 9xx - meta
 
