@@ -14,6 +14,10 @@
 --   957  more arguments than the callee takes  (selene mismatched_arg_count)
 --   958  standard library misuse                (selene incorrect_standard_library_use):
 --        too few required arguments, a literal of the wrong type, an unused result
+--   959  duplicate key in a table constructor    (selene duplicate_keys)
+--   960  comparing with NaN                     (selene compare_nan)
+--   961  comparing with a table constructor     (selene constant_table_comparison)
+--   962  two assignments that look like a broken swap (selene almost_swapped)
 --
 -- Opt-in: see rules/lint_gate.lua. Code range 950-979.
 local M = {}
@@ -300,6 +304,127 @@ local function detect_stdlib_misuse(ctx)
 end
 
 detectors[#detectors + 1] = detect_stdlib_misuse
+
+-- ---------------------------------------------------------------- 959
+
+-- The string-form key a literal Pair key node makes, or nil for a non-literal
+-- key (anything under `[...]` that is not a bare name or string literal).
+local function literal_key(node)
+   if not node then return nil end
+   if node.tag == "String" then return node[1] end
+   if node.tag == "Number" then return tonumber(node[1]) end
+   return nil
+end
+
+local function detect_duplicate_keys(ctx)
+   if not lint_gate.wanted(ctx.opts, "959") then return end
+
+   ctx:each_node(function(node)
+      if node.tag == "Table" then
+         local seen = {}
+         for _, pair in ipairs(node) do
+            if pair.tag == "Pair" then
+               local key = literal_key(pair[1])
+               if key ~= nil then
+                  if seen[key] then
+                     ctx:emit("959", pair, {key = key})
+                  else
+                     seen[key] = true
+                  end
+               end
+            end
+         end
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_duplicate_keys
+
+-- ---------------------------------------------------------------- 960
+
+-- Is this expression the literal NaN `0/0`, or its unary negation `-(0/0)`?
+local function is_nan_literal(node)
+   if not node or type(node) ~= "table" then return false end
+   if node.tag == "Op" and node[1] == "div" then
+      local left, right = node[2], node[3]
+      return left and left.tag == "Number" and tonumber(left[1]) == 0
+         and right and right.tag == "Number" and tonumber(right[1]) == 0
+   end
+   if node.tag == "Op" and node[1] == "unm" then
+      local operand = node[2]
+      return is_nan_literal(operand)
+   end
+   return false
+end
+
+local function detect_compare_nan(ctx)
+   if not lint_gate.wanted(ctx.opts, "960") then return end
+
+   ctx:each_node(function(node)
+      if node.tag == "Op" and (node[1] == "eq" or node[1] == "ne") then
+         if is_nan_literal(node[2]) or is_nan_literal(node[3]) then
+            ctx:emit("960", node)
+         end
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_compare_nan
+
+-- ---------------------------------------------------------------- 961
+
+-- A table constructor literal, not a variable.
+local function is_table_literal(node)
+   return type(node) == "table" and node.tag == "Table"
+end
+
+local function detect_constant_table_comparison(ctx)
+   if not lint_gate.wanted(ctx.opts, "961") then return end
+
+   ctx:each_node(function(node)
+      if node.tag == "Op" and (node[1] == "eq" or node[1] == "ne") then
+         if is_table_literal(node[2]) or is_table_literal(node[3]) then
+            ctx:emit("961", node)
+         end
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_constant_table_comparison
+
+-- ---------------------------------------------------------------- 962
+
+-- Is this lhs/rhs a single plain name (an Id that is a local or global, not an
+-- indexed assignment)?
+local function plain_name(node)
+   return type(node) == "table" and node.tag == "Id"
+end
+
+-- A Set item that assigns exactly one lhs and one rhs.
+local function is_simple_set(item)
+   return item.tag == "Set" and #item.lhs == 1 and #item.rhs == 1
+end
+
+local function detect_almost_swapped(ctx)
+   if not lint_gate.wanted(ctx.opts, "962") then return end
+
+   local prev = nil
+   for _, line in ipairs(ctx.chstate.lines) do
+      for _, item in ipairs(line.items) do
+         if prev and is_simple_set(prev) and is_simple_set(item)
+            and plain_name(prev.lhs[1]) and plain_name(prev.rhs[1])
+            and plain_name(item.lhs[1]) and plain_name(item.rhs[1])
+            and prev.lhs[1][1] == item.rhs[1][1]
+            and prev.rhs[1][1] == item.lhs[1][1]
+            and prev.lhs[1][1] ~= prev.rhs[1][1] then
+            ctx:emit("962", item.node, {a = prev.lhs[1][1], b = prev.rhs[1][1]})
+         end
+         prev = item
+      end
+   end
+end
+
+detectors[#detectors + 1] = detect_almost_swapped
 
 --- The detectors this module contributes, in run order.
 function M.detectors()

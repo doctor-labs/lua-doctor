@@ -386,3 +386,50 @@ describe("958 standard library misuse (#382)", function()
       assert_equal(#problems('local line = string.rep("-")\n', {}), 0)
    end)
 end)
+
+describe("959-962 selene correctness lints (#367, #368, #369, #370)", function()
+   local function found(code, source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == code then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("959 a key written twice in one table constructor", function()
+      local hits = found("959", 'local t = {a = 1, b = 2, a = 3}\n')
+      assert_equal(#hits, 1)
+      assert_match(hits[1], "duplicate key a", hits[1])
+      assert_equal(#found("959", 'local t = {["a"] = 1, a = 2}\n'), 1)
+      assert_equal(#found("959", 'local t = {[1] = "x", [1] = "y"}\n'), 1)
+      assert_equal(#found("959", 'local t = {a = 1, b = 2, [k] = 3, [k] = 4}\n'), 0)
+   end)
+
+   it("960 comparing with NaN", function()
+      local hits = found("960", 'if x == 0/0 then end\n')
+      assert_equal(#hits, 1)
+      assert_match(hits[1], "x ~= x", hits[1])
+      assert_equal(#found("960", 'if 0/0 ~= y then end\n'), 1)
+      assert_equal(#found("960", 'if x == 0 then end\nif x ~= x then end\n'), 0)
+   end)
+
+   it("961 comparing with a table constructor", function()
+      assert_equal(#found("961", 'if x == {} then end\n'), 1)
+      assert_equal(#found("961", 'if {1} ~= y then end\n'), 1)
+      assert_equal(#found("961", 'if x == y then end\nlocal t = {}\n'), 0)
+   end)
+
+   it("962 an assignment pair that looks like a broken swap", function()
+      local hits = found("962", 'a = b\nb = a\n')
+      assert_equal(#hits, 1)
+      assert_match(hits[1], "a, b = b, a", hits[1])
+      assert_equal(#found("962", 'a = b\nc = a\n'), 0)
+      assert_equal(#found("962", 'a, b = b, a\n'), 0)
+   end)
+
+   it("all four stay off by default", function()
+      for _, code in ipairs({"959", "960", "961", "962"}) do
+         assert_equal(#found(code, 'local t = {a = 1, a = 2}\nif x == 0/0 or x == {} then end\na = b\nb = a\n', {}), 0)
+      end
+   end)
+end)

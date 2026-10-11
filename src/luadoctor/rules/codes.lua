@@ -277,4 +277,25 @@ register {code = "957", severity = "low", cwe = "CWE-0", confidence = "medium",
 register {code = "958", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "{problem} ({name})", fields = {"problem"}}
 
+-- selene duplicate_keys. Two entries in one table constructor share the same
+-- literal key, so one silently overwrites the other.
+register {code = "959", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "duplicate key {key} in a table"}
+
+-- selene compare_nan. Comparing a value against NaN is always false for == and
+-- always true for ~=.
+register {code = "960", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "comparing with NaN is always false for == and true for ~=; use x ~= x to test for NaN"}
+
+-- selene constant_table_comparison. A table constructor has a new identity each
+-- time it runs, so comparing one to anything by value is always false for == and
+-- always true for ~=.
+register {code = "961", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "comparing with a new table is always false for == and true for ~= (tables compare by identity)"}
+
+-- selene almost_swapped. Two consecutive assignments swap two names but lose a
+-- value: A = B; B = A copies B into both rather than swapping them.
+register {code = "962", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "this looks like a swap that loses a value; use {a}, {b} = {b}, {a}"}
+
 return codes
