@@ -510,3 +510,36 @@ describe("966-968 selene if_same_then_else, ifs_same_cond, mixed_table (#365, #3
       end
    end)
 end)
+
+describe("969-970 unbalanced assignment, parenthesized condition (#348, #360, #379)", function()
+   local function found(code, source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == code then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("969 more names than values, or more values than names", function()
+      local few = found("969", 'local a, b = 1\n')
+      assert_equal(#few, 1)
+      assert_match(few[1], "2 names, 1 value", few[1])
+      assert_equal(#found("969", 'local a = 1, 2\n'), 1)
+      assert_equal(#found("969", 'x, y = 1, 2, 3\n'), 1)
+      assert_equal(#found("969", 'local a, b = f()\nlocal c, d = ...\nlocal e, g = 1, h()\n'), 0)
+      assert_equal(#found("969", 'local a, b\nlocal c, d = 1, 2\n'), 0)
+   end)
+
+   it("970 a condition wrapped in parentheses", function()
+      assert_equal(#found("970", 'if (x) then f() end\n'), 1)
+      assert_equal(#found("970", 'while (x) do f() end\n'), 1)
+      assert_equal(#found("970", 'repeat f() until (x)\n'), 1)
+      assert_equal(#found("970", 'if (a or b) and c then f() end\nif x then f() end\n'), 0)
+   end)
+
+   it("both stay off by default", function()
+      for _, code in ipairs({"969", "970"}) do
+         assert_equal(#found(code, 'local a, b = 1\nif (x) then f() end\n', {}), 0)
+      end
+   end)
+end)

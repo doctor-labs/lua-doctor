@@ -326,4 +326,17 @@ register {code = "967", severity = "low", cwe = "CWE-0", confidence = "medium",
 register {code = "968", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "this table mixes positional and keyed entries"}
 
+
+-- luacheck 531/532 / selene unbalanced_assignments. A local or plain assignment
+-- has a different number of names and values, and the last value cannot expand
+-- to fill the gap (a call, an invoke, or `...` can).
+register {code = "969", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "{n} names, {m} value(s): the assignment is unbalanced"}
+
+-- selene parenthese_conditions. The whole condition of an if, elseif, while, or
+-- until is wrapped in parentheses, which hides its intent and can mask a
+-- subsequent condition change.
+register {code = "970", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "parentheses around the whole condition are not needed"}
+
 return codes
