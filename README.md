@@ -325,11 +325,22 @@ return {
   disable = {"705"},
   severity = {["709"] = "low"},
   allow = {{code = "709", file = "handler.lua", reason = "reviewed: sanitized upstream"}},
+  files = {
+    ["fixtures/**/*.lua"] = {disable = {"709"}, severity = {["702"] = "low"}},
+  },
 }
 ```
 
 Every `allow` entry needs a `reason`, and every entry writes one line to
 stderr, so nothing is silenced without a trace.
+
+Per-file overrides in the `files` table apply only to findings whose file
+matches a glob (`**` matches anything including `/`, `*` any characters
+except `/`, `?` one character; everything else is literal). A matching
+`disable` removes the finding; a matching `severity` replaces its severity.
+Several globs may match, in which case all of them are applied in sorted
+order. The `files` table is kept by `lua-doctor rules set|enable|disable`,
+so editing a single code does not drop it.
 
 `install` writes agent guidance — a Claude skill, a Cursor rule, and an
 AGENTS.md block — so a coding agent in the project scans, explains, and fixes
