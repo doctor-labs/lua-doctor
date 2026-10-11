@@ -23,7 +23,7 @@ describe("config file", function()
       local out, code = with_config("cfg_unknown", "return {fail_onn = 'high'}", {TAINTED})
       assert_equal(code, 2, out)
       assert_match(out, "unknown key 'fail_onn'", out)
-      assert_match(out, "allow, disable, fail_on, severity, std", out)
+      assert_match(out, "allow, disable, fail_on, files, severity, std", out)
    end)
 
    it("refuses an allow entry without a reason", function()

@@ -8,7 +8,7 @@ local config = {}
 
 config.DEFAULT_NAME = "lua-doctor.config.lua"
 
-local KEYS = {"allow", "disable", "fail_on", "severity", "std"}
+local KEYS = {"allow", "disable", "fail_on", "files", "severity", "std"}
 local ALLOW_KEYS = {code = true, file = true, reason = true}
 local SEVERITIES = {low = true, medium = true, high = true, critical = true}
 local SEVERITY_LIST = "low, medium, high, critical"
@@ -68,6 +68,58 @@ function config.check(value, path)
          end
          if type(entry.reason) ~= "string" or not entry.reason:match("%S") then
             return bad(("allow[%d] needs a reason"):format(index))
+         end
+      end
+   end
+   if value.files ~= nil then
+      if type(value.files) ~= "table" then
+         return bad("files must map glob patterns to {disable, severity}")
+      end
+      for glob, override in pairs(value.files) do
+         if type(glob) ~= "string" then
+            return bad(("files keys must be glob strings, not %s"):format(type(glob)))
+         end
+         if type(override) ~= "table" then
+            return bad(("files['%s'] must be a table"):format(glob))
+         end
+         for key in pairs(override) do
+            if key ~= "disable" and key ~= "severity" then
+               return bad(("files['%s']: unknown key '%s': expected disable, severity")
+                  :format(glob, tostring(key)))
+            end
+         end
+         if override.disable ~= nil then
+            if type(override.disable) ~= "table" then
+               return bad(("files['%s'].disable must be a list of code patterns"):format(glob))
+            end
+            for index, pattern in ipairs(override.disable) do
+               if type(pattern) ~= "string" then
+                  return bad(("files['%s'].disable[%d] must be a string"):format(glob, index))
+               end
+               if not codes.exists(pattern) then
+                  return bad(("files['%s'].disable[%d]: '%s' is not a lua-doctor code")
+                     :format(glob, index, tostring(pattern)))
+               end
+            end
+         end
+         if override.severity ~= nil then
+            if type(override.severity) ~= "table" then
+               return bad(("files['%s'].severity must map a code to a severity"):format(glob))
+            end
+            for code, severity in pairs(override.severity) do
+               if type(code) ~= "string" then
+                  return bad(("files['%s'].severity keys are quoted codes, e.g. ['709'], not %s")
+                     :format(glob, tostring(code)))
+               end
+               if not codes.exists(tostring(code)) then
+                  return bad(("files['%s'].severity: '%s' is not a lua-doctor code")
+                     :format(glob, tostring(code)))
+               end
+               if not SEVERITIES[severity] then
+                  return bad(("files['%s'].severity['%s'] must be one of %s")
+                     :format(glob, tostring(code), SEVERITY_LIST))
+               end
+            end
          end
       end
    end
@@ -156,6 +208,36 @@ function config.serialize(value)
          if entry.file then parts[#parts + 1] = ("file = %s"):format(quote(entry.file)) end
          parts[#parts + 1] = ("reason = %s"):format(quote(entry.reason))
          out[#out + 1] = ("    {%s},"):format(table.concat(parts, ", "))
+      end
+      out[#out + 1] = "  },"
+   end
+   if value.files and next(value.files) then
+      local globs = {}
+      for glob in pairs(value.files) do globs[#globs + 1] = glob end
+      table.sort(globs)
+      out[#out + 1] = "  files = {"
+      for _, glob in ipairs(globs) do
+         local override = value.files[glob]
+         local parts = {}
+         if override.disable and #override.disable > 0 then
+            local items = {}
+            for _, pattern in ipairs(override.disable) do items[#items + 1] = quote(pattern) end
+            parts[#parts + 1] = ("disable = {%s}"):format(table.concat(items, ", "))
+         end
+         if override.severity and next(override.severity) then
+            local codes_for_glob = {}
+            for code in pairs(override.severity) do codes_for_glob[#codes_for_glob + 1] = code end
+            table.sort(codes_for_glob)
+            local items = {}
+            for _, code in ipairs(codes_for_glob) do
+               items[#items + 1] = ("[%s] = %s"):format(quote(code), quote(override.severity[code]))
+            end
+            parts[#parts + 1] = ("severity = {%s}"):format(table.concat(items, ", "))
+         end
+         local glob_str = quote(glob)
+         local entry = #parts > 0 and ("[%s] = {%s}"):format(glob_str, table.concat(parts, ", "))
+            or ("[%s] = {}"):format(glob_str)
+         out[#out + 1] = ("    %s,"):format(entry)
       end
       out[#out + 1] = "  },"
    end

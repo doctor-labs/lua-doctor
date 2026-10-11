@@ -41,6 +41,36 @@ local function matches(subject, pattern)
    return ok and result ~= nil
 end
 
+-- Convert a glob (as in the config's `files` table) into a Lua pattern that
+-- matches the whole path. `**` matches anything including "/", `*` matches
+-- anything except "/", `?` matches a single char except "/", everything else
+-- is literal. Anchored at both ends.
+local MAGIC = " ^$()%.[]*+-?"
+local function glob_to_pattern(glob)
+   local out = {}
+   local i = 1
+   while i <= #glob do
+      local char = glob:sub(i, i)
+      if char == "*" and i < #glob and glob:sub(i + 1, i + 1) == "*" then
+         out[#out + 1] = ".*"
+         i = i + 2 -- consume both stars
+      elseif char == "*" then
+         out[#out + 1] = "[^/]*"
+         i = i + 1
+      elseif char == "?" then
+         out[#out + 1] = "[^/]"
+         i = i + 1
+      elseif MAGIC:find(char, 1, true) then
+         out[#out + 1] = "%" .. char
+         i = i + 1
+      else
+         out[#out + 1] = char
+         i = i + 1
+      end
+   end
+   return "^" .. table.concat(out) .. "$"
+end
+
 local function pattern_matches(pattern, finding)
    local code_pattern, name_pattern = pattern:match("^([^:]*):?(.*)$")
    local codes_ok = code_pattern == "" or matches(finding.code, code_pattern)
@@ -138,10 +168,46 @@ function selection.settings(opts)
 end
 
 --- Apply the config's severity overrides to raw findings, in place.
+-- Per-file overrides (`files = {["glob"] = {...}}`) run after the global
+-- severity table: a glob that matches the finding's file applies its disable
+-- (removing the finding) and severity (replacing the finding's severity).
+-- Globs are applied in sorted order so behavior is deterministic.
 function selection.override(report, settings)
    for _, finding in ipairs(report) do
       local override = settings.severity and settings.severity[finding.code]
       if override then finding.severity = override end
+   end
+   if not settings.files then return end
+   local globs = {}
+   for glob in pairs(settings.files) do globs[#globs + 1] = glob end
+   table.sort(globs)
+   local i = 1
+   while i <= #report do
+      local finding = report[i]
+      local file = finding.file or ""
+      local keep = true
+      for _, glob in ipairs(globs) do
+         if matches(file, glob_to_pattern(glob)) then
+            local entry = settings.files[glob]
+            if entry.disable then
+               for _, pattern in ipairs(entry.disable) do
+                  if pattern_matches(pattern, finding) then
+                     keep = false
+                     break
+                  end
+               end
+            end
+            if keep and entry.severity and entry.severity[finding.code] then
+               finding.severity = entry.severity[finding.code]
+            end
+            if not keep then break end
+         end
+      end
+      if not keep then
+         table.remove(report, i)
+      else
+         i = i + 1
+      end
    end
 end
 
