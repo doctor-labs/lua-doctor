@@ -107,7 +107,7 @@ function parse_context.build(source_bytes, options)
    chstate.line_offsets = {}
    chstate.line_lengths = {}
 
-   local ok, ast, comments, code_lines, line_endings = pcall(function()
+   local ok, ast, comments, code_lines, line_endings, hanging_semicolons = pcall(function()
       return parser.parse(chstate.source, chstate.line_offsets, chstate.line_lengths)
    end)
 
@@ -128,6 +128,7 @@ function parse_context.build(source_bytes, options)
    chstate.comments = comments
    chstate.code_lines = code_lines
    chstate.line_endings = line_endings
+   chstate.hanging_semicolons = hanging_semicolons or {}
 
    -- The stages after the parser reject too, and their rejections are not
    -- SyntaxError instances: linearize raises a bare table for a duplicate

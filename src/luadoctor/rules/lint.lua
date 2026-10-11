@@ -33,6 +33,10 @@
 --        `goto` in the same function jumps to
 --   972  division by zero                       (selene divide_by_zero): a `/` or `%`
 --        whose right operand is the literal 0 (or folds to it), except the NaN idiom 0/0
+--   973  line too long                          (luacheck 631): a line longer than 120 characters
+--   974  empty statement                        (luacheck 551, selene empty_statement): a stray `;`
+--   975  multiple statements on one line        (selene multiple_statements): more than one
+--        statement begins on the same line, within one block
 --
 -- Opt-in: see rules/lint_gate.lua. Code range 950-979.
 local M = {}
@@ -816,6 +820,134 @@ local function detect_division_by_zero(ctx)
 end
 
 detectors[#detectors + 1] = detect_division_by_zero
+
+-- ---------------------------------------------------------------- 973
+
+-- luacheck 631. A line longer than 120 characters. The line_lengths table maps
+-- line numbers to their character length; any line over the limit is reported at
+-- column 121, where the overflow begins.
+local function detect_line_too_long(ctx)
+   if not lint_gate.wanted(ctx.opts, "973") then return end
+
+   local line_lengths = ctx.chstate.line_lengths
+   for line, length in pairs(line_lengths) do
+      if length > 120 then
+         ctx:emit("973", {
+            tag = "Id",
+            line = line,
+            offset = (ctx.chstate.line_offsets[line] or 0) + 121,
+            end_offset = (ctx.chstate.line_offsets[line] or 0) + 121,
+         }, {n = length})
+      end
+   end
+end
+
+detectors[#detectors + 1] = detect_line_too_long
+
+-- ---------------------------------------------------------------- 974
+
+-- luacheck 551 / selene empty_statement. A semicolon that does not follow a
+-- statement: `;;`, a leading `;`, or a `;` after a comment. The parser records
+-- these as ranges in hanging_semicolons, each a {line, offset, end_offset} table.
+local function detect_empty_statement(ctx)
+   if not lint_gate.wanted(ctx.opts, "974") then return end
+
+   local hanging_semicolons = ctx.chstate.hanging_semicolons
+   for _, range in ipairs(hanging_semicolons) do
+      ctx:emit("974", range)
+   end
+end
+
+detectors[#detectors + 1] = detect_empty_statement
+
+-- ---------------------------------------------------------------- 975
+
+-- selene multiple_statements. More than one statement begins on the same line
+-- within one block. Nested blocks are checked independently: `if a then return
+-- end` on one line is one statement in its block and is not reported.
+--
+-- A "block" is any statement list: the chunk AST (a table with no tag whose
+-- elements are statements), and the body block of If/While/Repeat/Fornum/Forin/
+-- Do/Function nodes. Each block type stores its statement list at a known index:
+--   Chunk  - the whole AST table (no tag)
+--   If     - even indices (2, 4, ...): each branch block; odd trailing index if
+--   Fornum - last index is the block
+--   Forin  - last index is the block
+--   While  - index 2 is the block
+--   Repeat - index 1 is the block
+--   Do     - index 1 is the block
+--   Function - index 2 is {args, body, end_range=...}; index 1 of that is args,
+--              index 2 is the body block
+local function detect_multiple_statements(ctx)
+   if not lint_gate.wanted(ctx.opts, "975") then return end
+
+   -- Extract the statement-list (block) children from a block-container node.
+   local function block_children(node)
+      local tag = node.tag
+      if tag == "If" then
+         local blocks = {}
+         for i = 2, #node, 2 do blocks[#blocks + 1] = node[i] end
+         if #node % 2 == 1 then blocks[#blocks + 1] = node[#node] end
+         return blocks
+      elseif tag == "While" then
+         return {node[2]}
+      elseif tag == "Repeat" then
+         return {node[1]}
+      elseif tag == "Fornum" or tag == "Forin" then
+         return {node[#node]}
+      elseif tag == "Do" then
+         return {node[1]}
+      elseif tag == "Function" then
+         local body = node[2]  -- {args, body, end_range = ...}
+         if type(body) == "table" then
+            return {body[2]}
+         end
+         return {}
+      end
+      return {}
+   end
+
+   local function check_block(block)
+      if type(block) ~= "table" then return end
+      local prev_line
+      for _, stmt in ipairs(block) do
+         if stmt and stmt.tag and stmt.line then
+            if prev_line and prev_line == stmt.line then
+               ctx:emit("975", stmt)
+            end
+            prev_line = stmt.line
+         end
+      end
+   end
+
+   local function walk(node, depth)
+      if depth > 200 or type(node) ~= "table" then return end
+
+      if node.tag then
+         if node.tag == "Function" or node.tag == "Do"
+            or node.tag == "While" or node.tag == "Repeat"
+            or node.tag == "Fornum" or node.tag == "Forin"
+            or node.tag == "If" then
+            -- Check each block in this node, then descend into them.
+            local blocks = block_children(node)
+            for _, block in ipairs(blocks) do
+               check_block(block)
+               walk(block, depth + 1)
+            end
+         end
+      else
+         -- A chunk/block: a table with no tag whose elements are statements.
+         check_block(node)
+         for _, child in ipairs(node) do
+            walk(child, depth + 1)
+         end
+      end
+   end
+
+   walk(ctx.chstate.ast, 0)
+end
+
+detectors[#detectors + 1] = detect_multiple_statements
 
 --- The detectors this module contributes, in run order.
 function M.detectors()

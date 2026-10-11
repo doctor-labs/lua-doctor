@@ -348,4 +348,18 @@ register {code = "971", severity = "low", cwe = "CWE-0", confidence = "medium",
 register {code = "972", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "division by zero"}
 
+-- luacheck 631. A line whose length exceeds the configured limit (120).
+register {code = "973", severity = "low", cwe = "CWE-0", confidence = "high",
+   message = "line is {n} characters long (limit 120)"}
+
+-- luacheck 551 / selene empty_statement. A semicolon on its own, not after a
+-- statement: `;;`, a leading `;`, or a `;` after a comment.
+register {code = "974", severity = "low", cwe = "CWE-0", confidence = "high",
+   message = "empty statement (a stray `;`)"}
+
+-- selene multiple_statements. More than one statement begins on the same line,
+-- within a single block. Nested blocks are checked independently.
+register {code = "975", severity = "low", cwe = "CWE-0", confidence = "high",
+   message = "more than one statement on this line"}
+
 return codes
