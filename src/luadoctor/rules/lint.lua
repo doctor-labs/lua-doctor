@@ -24,6 +24,11 @@
 --   966  two branches of an if do the same thing      (selene if_same_then_else)
 --   967  an elseif repeats an earlier condition         (selene ifs_same_cond)
 --   968  a table constructor mixes positional and keyed entries (selene mixed_table)
+--   969  unbalanced assignment               (luacheck 531/532, selene unbalanced_assignments):
+--        a local or plain assignment with values where names and values differ,
+--        when the last value is not a call or ...
+--   970  parenthesized condition              (selene parenthese_conditions):
+--        the whole condition of an if, elseif, while or until is one parenthesized expression
 --
 -- Opt-in: see rules/lint_gate.lua. Code range 950-979.
 local M = {}
@@ -635,6 +640,78 @@ local function detect_mixed_table(ctx)
 end
 
 detectors[#detectors + 1] = detect_mixed_table
+
+-- ---------------------------------------------------------------- 969
+
+-- A value that can expand into any number of results: a call, an invoke, or
+-- `...`. When it is the last value of an assignment, the name/value counts
+-- can mismatch on purpose.
+local function is_open_value(node)
+   return node.tag == "Call" or node.tag == "Invoke" or node.tag == "Dots"
+end
+
+local function detect_unbalanced_assignment(ctx)
+   if not lint_gate.wanted(ctx.opts, "969") then return end
+
+   ctx:each_node(function(node)
+      if node.tag ~= "Local" and node.tag ~= "Set" then return end
+      local names = node[1]
+      local values = node[2]
+      if not values or #values == 0 then return end
+      if #names ~= #values then
+         local last = values[#values]
+         if not is_open_value(last) then
+            ctx:emit("969", node, {n = #names, m = #values})
+         end
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_unbalanced_assignment
+
+-- ---------------------------------------------------------------- 970
+
+-- Is the source character at `offset` an opening parenthesis, and the one at
+-- `offset+1` (after the node's end) a closing one? The AST has had Paren nodes
+-- unwrapped by unwrap_parens, so the condition node itself is not a "Paren"; we
+-- recover the original parenthesization from the source text.
+local function is_parenthesized(source, cond)
+   if not cond or not cond.offset or not cond.end_offset then return false end
+   return source:sub(cond.offset - 1, cond.offset - 1) == "("
+      and source:sub(cond.end_offset + 1, cond.end_offset + 1) == ")"
+end
+
+-- The conditions of an if/as an array of conditions at odd indices
+-- (1, 3, ...), up to the last pair; an `else` block, when present, sits at the
+-- final even index and is not a condition.
+local function each_condition(node, visit)
+   if not node or not node.tag then return end
+   if node.tag == "If" then
+      for i = 1, #node - 1, 2 do
+         visit(node[i])
+      end
+   elseif node.tag == "While" then
+      visit(node[1])
+   elseif node.tag == "Repeat" then
+      visit(node[2])
+   end
+end
+
+local function detect_parenthesized_condition(ctx)
+   if not lint_gate.wanted(ctx.opts, "970") then return end
+
+   ctx:each_node(function(node)
+      each_condition(node, function(cond)
+         if cond and cond.tag == "Paren" then
+            ctx:emit("970", node)
+         elseif is_parenthesized(ctx.source, cond) then
+            ctx:emit("970", node)
+         end
+      end)
+   end)
+end
+
+detectors[#detectors + 1] = detect_parenthesized_condition
 
 --- The detectors this module contributes, in run order.
 function M.detectors()

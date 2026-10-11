@@ -204,6 +204,8 @@ default, because a firmware tree reports them by the thousand: they run under
 | 966 | low | CWE-0 | two branches of an if do the same thing (selene if_same_then_else) |
 | 967 | low | CWE-0 | an elseif repeats an earlier condition, so it never runs (selene ifs_same_cond) |
 | 968 | low | CWE-0 | a table constructor mixes positional and keyed entries (selene mixed_table) |
+| 969 | low | CWE-0 | unbalanced assignment: names and values differ, and the last value is not a call or `...` (luacheck 531/532, selene unbalanced_assignments) |
+| 970 | low | CWE-0 | parentheses around the whole condition of an if, elseif, while or until (selene parenthese_conditions) |
 
 ## 9xx - meta
 
