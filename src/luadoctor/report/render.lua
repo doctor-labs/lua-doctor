@@ -12,11 +12,14 @@ local json = require "luadoctor.report.json"
 local plain = require "luadoctor.report.plain"
 local sarif = require "luadoctor.report.sarif"
 local html = require "luadoctor.report.html"
+local junit = require "luadoctor.report.junit"
+local tap = require "luadoctor.report.tap"
+local visual_studio = require "luadoctor.report.visual_studio"
 local findings = require "luadoctor.report.findings"
 
 local render = {}
 
-local UNKNOWN_FORMAT = "unknown format '%s': expected plain, json, sarif or html"
+local UNKNOWN_FORMAT = "unknown format '%s': expected plain, json, sarif, html, junit, tap or visual_studio"
 
 --- Render a normalized findings list in the named format.
 -- Returns the rendered report, or nil plus a message when `name` is not a
@@ -31,6 +34,12 @@ function render.render(list, name, opts)
       return html.render(list, opts)
    elseif name == "plain" then
       return plain.render(list, opts)
+   elseif name == "junit" then
+      return junit.render(list, opts)
+   elseif name == "tap" then
+      return tap.render(list, opts)
+   elseif name == "visual_studio" then
+      return visual_studio.render(list, opts)
    end
    return nil, UNKNOWN_FORMAT:format(name)
 end

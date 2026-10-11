@@ -234,9 +234,12 @@ local function run(argv)
    -- `--format json -o report.json` wrote prose into a file a CI then handed to
    -- jq, and the failure surfaced downstream as a parse error in a tool that
    -- was never wrong. A typo in a flag is a config error, like the numbers.
-   local FORMAT_NAMES = {plain = true, json = true, sarif = true, html = true}
+   local FORMAT_NAMES = {
+      plain = true, json = true, sarif = true, html = true,
+      junit = true, tap = true, visual_studio = true,
+   }
    if opts.format and not FORMAT_NAMES[opts.format] then
-      return fail(("unknown format '%s': expected plain, json, sarif or html")
+      return fail(("unknown format '%s': expected plain, json, sarif, html, junit, tap or visual_studio")
          :format(opts.format))
    end
    if opts.summary and opts.format and opts.format ~= "plain" then
