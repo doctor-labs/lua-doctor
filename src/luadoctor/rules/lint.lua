@@ -29,6 +29,10 @@
 --        when the last value is not a call or ...
 --   970  parenthesized condition              (selene parenthese_conditions):
 --        the whole condition of an if, elseif, while or until is one parenthesized expression
+--   971  unused label                          (luacheck 521): a named label no
+--        `goto` in the same function jumps to
+--   972  division by zero                       (selene divide_by_zero): a `/` or `%`
+--        whose right operand is the literal 0 (or folds to it), except the NaN idiom 0/0
 --
 -- Opt-in: see rules/lint_gate.lua. Code range 950-979.
 local M = {}
@@ -712,6 +716,106 @@ local function detect_parenthesized_condition(ctx)
 end
 
 detectors[#detectors + 1] = detect_parenthesized_condition
+
+-- ---------------------------------------------------------------- 971
+
+-- A label is local to the function that contains it: a `goto` in an enclosing
+-- function or a sibling one does not use it. So each label and goto is collected
+-- against the function scope that owns it, and a label is reported only when no
+-- `goto` of the same name in that same scope reaches it. The top-level chunk is
+-- its own scope, just like a function body.
+--
+-- A `Function` node is {tag="Function", args, body, end_range = ...}; the body is the
+-- list of statements at index 2. We push a scope before walking a function's
+-- body and pop it after, so labels and gotos are matched within their owner.
+local function detect_unused_label(ctx)
+   if not lint_gate.wanted(ctx.opts, "971") then return end
+
+   local scopes = {}  -- stack of {labels = {}, gotos = {}}
+
+   local function push_scope()
+      scopes[#scopes + 1] = {labels = {}, gotos = {}}
+   end
+   local function pop_scope()
+      local scope = table.remove(scopes)
+      local names = {}
+      for name in pairs(scope.labels) do
+         if not scope.gotos[name] then names[#names + 1] = name end
+      end
+      table.sort(names)  -- pairs order is not stable; emit deterministically
+      for _, name in ipairs(names) do
+         ctx:emit("971", scope.labels[name], {name = name})
+      end
+   end
+
+   local function walk(node, depth)
+      if depth > 200 or type(node) ~= "table" then return end
+
+      local tag = node.tag
+
+      if tag == "Function" then
+         -- Enter the function's own scope, walk its body, then check labels.
+         push_scope()
+         local body = node[2]  -- {args, body, end_range = ...}
+         walk(body, depth + 1)
+         pop_scope()
+         return
+      end
+
+      if tag == "Label" then
+         scopes[#scopes].labels[node[1]] = node
+      elseif tag == "Goto" then
+         scopes[#scopes].gotos[node[1]] = true
+      end
+
+      for index = 1, #node do
+         local child = node[index]
+         if type(child) == "table" then
+            if child.tag then
+               walk(child, depth + 1)
+            else
+               for _, sub in ipairs(child) do
+                  if type(sub) == "table" and sub.tag then
+                     walk(sub, depth + 1)
+                  end
+               end
+            end
+         end
+      end
+   end
+
+   push_scope()   -- top-level chunk scope
+   walk(ctx.chstate.ast, 0)
+   pop_scope()
+end
+
+detectors[#detectors + 1] = detect_unused_label
+
+-- ---------------------------------------------------------------- 972
+
+-- A `/` or `%` whose right operand folds to the literal 0, except the NaN idiom
+-- `0/0` where both operands are literal 0 (selene divide_by_zero). const_eval
+-- folds constant arithmetic; a non-constant right operand is left alone.
+local function detect_division_by_zero(ctx)
+   if not lint_gate.wanted(ctx.opts, "972") then return end
+
+   ctx:each_node(function(node)
+      if not node or node.tag ~= "Op" then return end
+      local op = node[1]
+      if op ~= "div" and op ~= "mod" then return end
+
+      local right = node[3]
+      local right_value = ctx.constant(right)
+      if right_value ~= 0 then return end
+
+      -- The NaN idiom 0/0: both operands are literal 0.
+      if op == "div" and is_nan_literal(node) then return end
+
+      ctx:emit("972", node)
+   end)
+end
+
+detectors[#detectors + 1] = detect_division_by_zero
 
 --- The detectors this module contributes, in run order.
 function M.detectors()
