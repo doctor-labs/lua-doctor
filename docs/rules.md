@@ -206,6 +206,8 @@ default, because a firmware tree reports them by the thousand: they run under
 | 968 | low | CWE-0 | a table constructor mixes positional and keyed entries (selene mixed_table) |
 | 969 | low | CWE-0 | unbalanced assignment: names and values differ, and the last value is not a call or `...` (luacheck 531/532, selene unbalanced_assignments) |
 | 970 | low | CWE-0 | parentheses around the whole condition of an if, elseif, while or until (selene parenthese_conditions) |
+| 971 | low | CWE-0 | unused label: a named label no `goto` in the same function jumps to (luacheck 521) |
+| 972 | low | CWE-0 | division by literal zero: a `/` or `%` whose right operand is the literal 0 (selene divide_by_zero) |
 
 ## 9xx - meta
 

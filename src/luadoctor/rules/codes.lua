@@ -339,4 +339,13 @@ register {code = "969", severity = "low", cwe = "CWE-0", confidence = "medium",
 register {code = "970", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "parentheses around the whole condition are not needed"}
 
+-- luacheck 521. A named label that no `goto` in the same function jumps to.
+register {code = "971", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "unused label {name}"}
+
+-- selene divide_by_zero. A `/` or `%` whose right operand is the literal 0 or
+-- folds to 0, except the NaN idiom 0/0.
+register {code = "972", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "division by zero"}
+
 return codes

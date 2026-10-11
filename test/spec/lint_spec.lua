@@ -543,3 +543,39 @@ describe("969-970 unbalanced assignment, parenthesized condition (#348, #360, #3
       end
    end)
 end)
+
+describe("971-972 unused label, division by literal zero (#347, #380)", function()
+   local function found(code, source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == code then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("971 a label no goto jumps to", function()
+      local hits = found("971", 'for i = 1, 3 do\n  ::skip::\nend\n')
+      assert_equal(#hits, 1)
+      assert_match(hits[1], "skip", hits[1])
+      assert_equal(#found("971", 'for i = 1, 3 do\n  if i == 2 then goto continue end\n  f(i)\n  ::continue::\nend\n'), 0)
+   end)
+
+   it("971 labels are scoped to their function", function()
+      -- inside a function body, and a goto in another function does not use it
+      local hits = found("971", 'local function f()\n  ::inner::\nend\nlocal function g()\n  goto inner\n  ::inner::\nend\n')
+      assert_equal(#hits, 1)
+      assert_match(hits[1], "inner", hits[1])
+   end)
+
+   it("972 dividing by the literal zero", function()
+      assert_equal(#found("972", 'local a = x / 0\n'), 1)
+      assert_equal(#found("972", 'local b = x % 0\n'), 1)
+      assert_equal(#found("972", 'local nan = 0/0\nlocal d = x / 2\nlocal e = x / y\n'), 0)
+   end)
+
+   it("both stay off by default", function()
+      for _, code in ipairs({"971", "972"}) do
+         assert_equal(#found(code, '::l::\nlocal a = x / 0\n', {}), 0)
+      end
+   end)
+end)
