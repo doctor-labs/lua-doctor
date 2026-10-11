@@ -362,4 +362,15 @@ register {code = "974", severity = "low", cwe = "CWE-0", confidence = "high",
 register {code = "975", severity = "low", cwe = "CWE-0", confidence = "high",
    message = "more than one statement on this line"}
 
+-- luacheck 611/612/613/614. A line whose trailing run of whitespace is not part
+-- of a multi-line string value. The rendered message is "trailing whitespace", or
+-- "line contains only whitespace" when the whole line is spaces/tabs.
+register {code = "976", severity = "low", cwe = "CWE-0", confidence = "high",
+   message = "{msg}"}
+
+-- luacheck 621. Indentation whose leading whitespace runs into a space right
+-- before a tab, e.g. " \t".
+register {code = "977", severity = "low", cwe = "CWE-0", confidence = "high",
+   message = "indentation has a space before a tab"}
+
 return codes
