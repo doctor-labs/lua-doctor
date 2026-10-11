@@ -241,4 +241,11 @@ register {code = "904", severity = "medium", cwe = "CWE-0", confidence = "certai
    message = "flow-sensitive analysis skipped for a large file ({name}); results are approximate",
    fields = {"node_count", "mode"}}
 
+-- ---------------------------------------------------------------- 95x lint (opt-in)
+
+-- luacheck 113 / selene undefined_variable. Low: the std is a list of names, and
+-- a platform can provide one it does not list. Opt-in, see rules/lint_gate.lua.
+register {code = "951", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "accessing undefined variable ({name})"}
+
 return codes

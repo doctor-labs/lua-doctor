@@ -36,7 +36,7 @@ describe("rule doc pages", function()
          if example then
             local std = section:match("`%-%-std (%S+)`")
             local fired = false
-            for _, finding in ipairs(api.check_source(example, {std = std})) do
+            for _, finding in ipairs(api.check_source(example, {std = std, enable = {rule.code}})) do
                if finding.code == rule.code then fired = true end
             end
             assert_true(fired, "the example in docs/rules/" .. rule.code .. ".md does not fire "

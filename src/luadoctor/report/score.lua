@@ -33,7 +33,7 @@ function score.summarize(list)
          total = total + score.penalty(finding)
          if degraded.is_degraded(finding.code) then gaps = gaps + 1 end
          local id = categories.of(finding.code)
-         if id then counts[id] = counts[id] + 1 end
+         if id then counts[id] = (counts[id] or 0) + 1 end
       end
    end
    local value = math.max(0, math.floor(100 - total))

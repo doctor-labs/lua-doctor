@@ -5,7 +5,7 @@
 -- family means adding a module and one line here; no other file changes.
 local M = {}
 
-local module_names = {"payloads", "firmware", "secrets", "rawscan", "names"}
+local module_names = {"payloads", "firmware", "secrets", "rawscan", "names", "lint"}
 
 --- All detectors, in module order then declaration order.
 function M.detectors()

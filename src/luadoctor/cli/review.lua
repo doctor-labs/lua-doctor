@@ -36,7 +36,7 @@ function review.model(list)
       by_category[id][#by_category[id] + 1] = finding
    end
    local rows, cursors = {}, {}
-   for _, id in ipairs(categories.order()) do
+   for _, id in ipairs(categories.order({lint = #(by_category.lint or {})})) do
       local group = by_category[id]
       if group and #group > 0 then
          rows[#rows + 1] = {kind = "header", label = categories.title(id), count = #group, category = id}

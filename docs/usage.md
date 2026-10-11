@@ -771,10 +771,26 @@ are Lua patterns, so `--ignore 70[1-9]` suppresses 701 through 709.
 bin/lua-doctor --only 709 test/fixtures/tainted_exec/handler.lua
 ```
 
+### Lint (opt-in)
+
+Codes 950-979 report names the way luacheck and selene do. They are off by
+default, so a plain run keeps its score and exit code, and run when asked:
+`--category lint`, or `--enable 95` (`--only 951` works too). They use luacheck's
+own standard tables for the Lua standard `--std` names (the union of all of them
+when it names none) plus the names the loaded platform profiles declare, so a
+platform table the profile does not list in full is never guessed at.
+
+```sh
+bin/lua-doctor --category lint myfile.lua
+```
+
+A global the file itself assigns still counts as undefined where it is read,
+as in luacheck's default (`allow_defined` off).
+
 ### Choosing a family
 
 `--category` keeps only one or more code families: `exec`, `firmware`,
-`payload`, `artifact`, `meta`. It is repeatable and comma separated, like
+`payload`, `artifact`, `meta`, and the opt-in `lint` (see [Lint](#lint-opt-in)). It is repeatable and comma separated, like
 `--only`. A file that was not analysed (`901`–`904`, `801`, `803`, `805`,
 `012`) is always kept, so a filter can never turn a coverage gap into a clean
 run. `why` and `fix` honour it too. An unknown family exits `2`.
