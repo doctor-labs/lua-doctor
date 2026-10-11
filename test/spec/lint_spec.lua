@@ -321,3 +321,68 @@ describe("957 more arguments than the function takes (#381)", function()
       assert_equal(#hits("os.getenv('a', 'b')\n", {}), 0)
    end)
 end)
+
+describe("958 standard library misuse (#382)", function()
+   local function problems(source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == "958" then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("a missing required argument is reported", function()
+      local found = problems('local line = string.rep("-")\n')
+      assert_equal(#found, 1)
+      assert_match(found[1], "too few arguments to string.rep: it requires 2, 1 passed", found[1])
+   end)
+
+   it("a trailing call or ... may supply the rest", function()
+      assert_equal(#problems('local a = string.rep(f())\nlocal b = string.sub(...)\n'), 0)
+   end)
+
+   it("an optional argument may be left out or skipped with nil", function()
+      assert_equal(#problems('local a = string.find("x", "y")\nlocal b = string.find("x", "y", nil)\n'), 0)
+   end)
+
+   it("a literal of the wrong type is reported", function()
+      local found = problems("local a = os.getenv({})\n")
+      assert_equal(#found, 1)
+      assert_match(found[1], "argument 1 of os.getenv should be a string, a table was passed", found[1])
+   end)
+
+   it("a string that is not a number fails a number parameter, a numeric one does not", function()
+      assert_equal(#problems('local a = math.floor("abc")\n'), 1)
+      assert_equal(#problems('local a = math.floor("3.5")\nlocal b = string.rep("x", "3")\n'), 0)
+   end)
+
+   it("a number passes a string parameter", function()
+      assert_equal(#problems("local a = string.len(123)\n"), 0)
+   end)
+
+   it("a nil literal for a required parameter is reported", function()
+      assert_equal(#problems("local a = string.upper(nil)\n"), 1)
+   end)
+
+   it("a pure function called as a statement is reported", function()
+      local found = problems("string.upper(s)\n")
+      assert_equal(#found, 1)
+      assert_match(found[1], "the result of string.upper is not used", found[1])
+   end)
+
+   it("a pure function whose result is used is not", function()
+      assert_equal(#problems("local s = string.upper(s)\nprint(string.upper(s))\n"), 0)
+   end)
+
+   it("a function called for its effect is not", function()
+      assert_equal(#problems("os.execute('ls')\ntable.insert(t, 1)\nprint('x')\n"), 0)
+   end)
+
+   it("a shadowed library name is not the standard library", function()
+      assert_equal(#problems('local string = {rep = function() end}\nstring.rep("x")\n'), 0)
+   end)
+
+   it("is off unless asked for", function()
+      assert_equal(#problems('local line = string.rep("-")\n', {}), 0)
+   end)
+end)

@@ -271,4 +271,10 @@ register {code = "954", severity = "low", cwe = "CWE-0", confidence = "medium",
 register {code = "957", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "too many arguments to {name}: it takes {max}, {given} passed", fields = {"max", "given"}}
 
+-- selene incorrect_standard_library_use. One code for three kinds of misuse, the
+-- `problem` field says which: too few required arguments, a literal of a type
+-- the parameter cannot take, a pure function called for nothing.
+register {code = "958", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "{problem} ({name})", fields = {"problem"}}
+
 return codes

@@ -12,6 +12,8 @@
 --   953  setting a read-only global or a field of one (luacheck 121, 122)
 --   954  setting or accessing an undefined field of a global (luacheck 142, 143)
 --   957  more arguments than the callee takes  (selene mismatched_arg_count)
+--   958  standard library misuse                (selene incorrect_standard_library_use):
+--        too few required arguments, a literal of the wrong type, an unused result
 --
 -- Opt-in: see rules/lint_gate.lua. Code range 950-979.
 local M = {}
@@ -211,6 +213,93 @@ local function detect_arg_count(ctx)
 end
 
 detectors[#detectors + 1] = detect_arg_count
+
+-- ---------------------------------------------------------------- 958
+
+-- Functions whose only effect is their result, so calling one as a statement
+-- discards the whole call (selene's `must_use`).
+local MUST_USE = {}
+for _, path in ipairs({
+   "tostring", "tonumber", "type", "rawequal", "rawget", "rawlen", "getmetatable",
+   "string.byte", "string.char", "string.find", "string.format", "string.gsub", "string.len",
+   "string.lower", "string.match", "string.rep", "string.reverse", "string.sub", "string.upper",
+   "table.concat", "table.unpack", "unpack",
+   "math.abs", "math.ceil", "math.floor", "math.sqrt", "math.max", "math.min", "math.fmod",
+   "os.time", "os.clock", "os.date", "os.getenv", "os.difftime",
+}) do MUST_USE[path] = true end
+
+-- The kind of value an argument is when it is a literal, else nil.
+local LITERAL_KIND = {String = "string", Number = "number", True = "boolean", False = "boolean",
+   Nil = "nil", Table = "table", Function = "function"}
+
+local function literal_kind(node)
+   return type(node) == "table" and LITERAL_KIND[node.tag] or nil
+end
+
+-- Does a literal of `kind` fail a parameter of type `expected`? Lua coerces
+-- between numbers and strings, so only a string that is not a number fails a
+-- `number`.
+local function type_mismatch(expected, kind, node)
+   if expected == "any" then return false end
+   if expected == "string" then
+      return kind == "boolean" or kind == "nil" or kind == "table" or kind == "function"
+   elseif expected == "number" then
+      if kind == "string" then return tonumber(node[1]) == nil end
+      return kind == "boolean" or kind == "nil" or kind == "table" or kind == "function"
+   elseif expected == "table" then
+      return kind ~= "table"
+   elseif expected == "function" then
+      return kind ~= "function"
+   end
+   return false
+end
+
+local ARTICLE = {string = "a string", number = "a number", table = "a table", ["function"] = "a function",
+   boolean = "a boolean", ["nil"] = "nil"}
+
+local function detect_stdlib_misuse(ctx)
+   if not lint_gate.wanted(ctx.opts, "958") then return end
+
+   each_call(ctx.chstate, function(node, item)
+      local path = ctx:path_of(node[1])
+      local params = path and platform_api.params_for(path)
+      if not params then return end
+      local args = call_arguments(node)
+      local last = args[#args]
+      local open = last and (last.tag == "Call" or last.tag == "Invoke" or last.tag == "Dots")
+
+      local required = 0
+      for index, param in ipairs(params) do
+         if param ~= "..." and not param:find("?", 1, true) then required = index end
+      end
+      if #args < required and not open then
+         ctx:emit("958", node, {name = path,
+            problem = ("too few arguments to %s: it requires %d, %d passed"):format(path, required, #args)})
+         return
+      end
+
+      for index, arg in ipairs(args) do
+         local param = params[index] or (params[#params] == "..." and "any") or nil
+         local kind = param and literal_kind(arg)
+         if kind then
+            local expected = param:gsub("%?$", "")
+            -- A nil literal is how an optional parameter is skipped.
+            local skipped = kind == "nil" and param:find("?", 1, true)
+            if not skipped and type_mismatch(expected, kind, arg) then
+               ctx:emit("958", arg, {name = path,
+                  problem = ("argument %d of %s should be %s, %s was passed")
+                     :format(index, path, ARTICLE[expected] or expected, ARTICLE[kind])})
+            end
+         end
+      end
+
+      if MUST_USE[path] and item and item.tag == "Eval" and item.node == node then
+         ctx:emit("958", node, {name = path, problem = ("the result of %s is not used"):format(path)})
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_stdlib_misuse
 
 --- The detectors this module contributes, in run order.
 function M.detectors()

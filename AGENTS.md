@@ -140,7 +140,7 @@ reproducible.
 | 721-731 | firmware-specific (flash, uci chain, sandbox escape, DoS, store hop, HTTP header and subrequest writes) |
 | 741-750 | payload / backdoor patterns |
 | 801-805 | artifact / bytecode |
-| 951-957 | lint, opt-in (`--category lint` or `--enable 95`): undefined variable, non-standard global set or mutated, read-only global set, undefined field of a global, too many arguments (957). Range 950-979 is reserved for lint codes |
+| 951-957 | lint, opt-in (`--category lint` or `--enable 95`): undefined variable, non-standard global set or mutated, read-only global set, undefined field of a global, too many arguments (957), standard library misuse (958). Range 950-979 is reserved for lint codes |
 | 901-904 | meta (901-903 parse failed, unsupported dialect, dialect mismatch; 904 analysis degraded on a large file, results approximate, never threshold-filterable) |
 
 Every registered code is in this table. The ranges contain gaps because not
