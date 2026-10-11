@@ -647,3 +647,33 @@ describe("976-977 trailing whitespace, mixed indentation (#353)", function()
       end
    end)
 end)
+
+describe("978-979 _G usage, a comparison inside type() (#375, #378)", function()
+   local function found(code, source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == code then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("978 reading or writing through _G", function()
+      assert_equal(#found("978", "_G.config = {}\nlocal x = _G.config\nlocal y = _G[\"name\"]\n"), 3)
+      assert_equal(#found("978", "local G = 1\nlocal t = {G = 2}\nprint(t.G)\n"), 0)
+      -- a local named _G shadows the global table and is not reported
+      assert_equal(#found("978", "local _G = {}\n_G.x = 1\n"), 0)
+   end)
+
+   it("979 a comparison passed to type()", function()
+      local hits = found("979", "if type(x == \"string\") then end\n")
+      assert_equal(#hits, 1)
+      assert_match(hits[1], "type", hits[1])
+      assert_equal(#found("979", "if type(x) == \"string\" then end\nlocal k = type(t[1])\n"), 0)
+   end)
+
+   it("both stay off by default", function()
+      for _, code in ipairs({"978", "979"}) do
+         assert_equal(#found(code, "_G.a = type(b == 1)\n", {}), 0)
+      end
+   end)
+end)

@@ -373,4 +373,16 @@ register {code = "976", severity = "low", cwe = "CWE-0", confidence = "high",
 register {code = "977", severity = "low", cwe = "CWE-0", confidence = "high",
    message = "indentation has a space before a tab"}
 
+-- selene global_usage. A reference to the global table `_G` that is not a local
+-- named `_G` shadowing it. Reading or writing the global directly bypasses scope
+-- tracking and is brittle; keep a local table instead.
+register {code = "978", severity = "low", cwe = "CWE-0", confidence = "high",
+   message = "{msg}"}
+
+-- selene type_check_inside_call. type() is being called with a comparison
+-- expression as its argument, which is almost always a typo for
+-- `type(x) == "..."` (and never type-checks the intended value).
+register {code = "979", severity = "low", cwe = "CWE-0", confidence = "high",
+   message = "comparison passed to type(): did you mean type(x) == \"...\"?"}
+
 return codes

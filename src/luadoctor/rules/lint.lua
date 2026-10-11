@@ -42,6 +42,12 @@
 --        are part of the value)
 --   977  indentation has a space before a tab   (luacheck 621): the leading whitespace of
 --        a line contains a space immediately followed by a tab
+--   978  use of _G                                (selene global_usage): reading or
+--        writing the global table `_G` directly, or indexing it, instead of a
+--        local table (a local named `_G` shadows the global and is not reported)
+--   979  a comparison inside type()              (selene type_check_inside_call): type()
+--        is called with a comparison expression (e.g. type(x == "s")) as its argument
+--        instead of comparing type(x) to a string literal
 --
 -- Opt-in: see rules/lint_gate.lua. Code range 950-979.
 local M = {}
@@ -1057,6 +1063,60 @@ local function detect_space_before_tab(ctx)
 end
 
 detectors[#detectors + 1] = detect_space_before_tab
+
+-- ---------------------------------------------------------------- 978
+
+-- selene global_usage. A reference to the global table `_G` that is not a local
+-- named `_G` shadowing it. luacheck's resolve_locals phase stamps a `.var`
+-- field on an Id node when it resolves to a local variable, so a global `_G`
+-- access is an Id named "_G" with no `.var`.
+--
+-- Reported on every Index node whose object is the global _G: `_G.x`,
+-- `_G["x"]`, `_G.x = ...` (indexing) and `_G.x += ...` (mutation). The emitted
+-- node is the Index; its offset/end_offset already span the whole `_G.x`.
+local function detect_G_usage(ctx)
+   if not lint_gate.wanted(ctx.opts, "978") then return end
+
+   ctx:each_node(function(node)
+      if node.tag ~= "Index" then return end
+      local obj = node[1]
+      if not obj or obj.tag ~= "Id" or obj[1] ~= "_G" or obj.var then return end
+      ctx:emit("978", node, {msg =
+         "use of _G (selene global_usage): read or write the global directly, or keep a local table"})
+   end)
+end
+
+detectors[#detectors + 1] = detect_G_usage
+
+-- ---------------------------------------------------------------- 979
+
+-- selene type_check_inside_call. type() is being called with a comparison
+-- expression (==, ~=, <, <=, >, >=) as its argument, which is almost always a
+-- typo for `type(x) == "..."` and never type-checks the intended value.
+--
+-- A Call whose callee is the global Id "type" (no `.var`, so it is not a local
+-- shadowing it) and whose first argument is an Op comparison.
+local function detect_type_check_inside_call(ctx)
+   if not lint_gate.wanted(ctx.opts, "979") then return end
+
+   ctx:each_node(function(node)
+      if node.tag ~= "Call" then return end
+      local fn = node[1]
+      if not fn or fn.tag ~= "Id" or fn[1] ~= "type" or fn.var then return end
+      -- First argument is node[2]; Call = {tag="Call", fn, arg1, arg2, ...}
+      local arg = node[2]
+      if not arg then return end
+      if arg.tag ~= "Op" then return end
+      local op = arg[1]
+      if op ~= "eq" and op ~= "ne" and op ~= "lt" and op ~= "le"
+         and op ~= "gt" and op ~= "ge" then
+         return
+      end
+      ctx:emit("979", node)
+   end)
+end
+
+detectors[#detectors + 1] = detect_type_check_inside_call
 
 --- The detectors this module contributes, in run order.
 function M.detectors()

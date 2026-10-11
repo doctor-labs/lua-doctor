@@ -213,6 +213,8 @@ default, because a firmware tree reports them by the thousand: they run under
 | 975 | low | CWE-0 | multiple statements on one line: more than one statement begins on the same line in a block (selene multiple_statements) |
 | 976 | low | CWE-0 | trailing whitespace: a line ends in a space or tab, or is all spaces/tabs (luacheck 611/612/613/614) |
 | 977 | low | CWE-0 | indentation has a space before a tab (luacheck 621) |
+| 978 | low | CWE-0 | use of _G: reading or writing the global table directly, or indexing it (selene global_usage) |
+| 979 | low | CWE-0 | a comparison passed to type(): type() called with a comparison as its argument, e.g. type(x == "s") (selene type_check_inside_call) |
 
 ## 9xx - meta
 
