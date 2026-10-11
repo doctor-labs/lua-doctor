@@ -309,4 +309,21 @@ register {code = "965", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "this loop does not run: it counts down without a step; add , -1 (e.g. for i = 10, 1, -1)"}
 
 
+
+-- selene if_same_then_else. Two branches of one if do the same thing, so one
+-- of them is dead. Empty branches are not reported here (963's job in selene,
+-- out of this tool's range).
+register {code = "966", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "two branches of this if do the same thing"}
+
+-- selene ifs_same_cond. An elseif repeats a condition that already ran, so it
+-- can never execute.
+register {code = "967", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "this elseif repeats an earlier condition, so it never runs"}
+
+-- selene mixed_table. A table constructor has positional and keyed entries at
+-- the same time, which is almost always an accidental index.
+register {code = "968", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "this table mixes positional and keyed entries"}
+
 return codes

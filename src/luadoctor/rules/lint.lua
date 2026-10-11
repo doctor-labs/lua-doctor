@@ -21,6 +21,9 @@
 --   963  empty if branch                         (luacheck 542, selene empty_if)
 --   964  empty loop body                         (selene empty_loop)
 --   965  reversed numeric for                    (luacheck 571, selene suspicious_reverse_loop)
+--   966  two branches of an if do the same thing      (selene if_same_then_else)
+--   967  an elseif repeats an earlier condition         (selene ifs_same_cond)
+--   968  a table constructor mixes positional and keyed entries (selene mixed_table)
 --
 -- Opt-in: see rules/lint_gate.lua. Code range 950-979.
 local M = {}
@@ -537,6 +540,101 @@ local function detect_reversed_for(ctx)
 end
 
 detectors[#detectors + 1] = detect_reversed_for
+
+-- ---------------------------------------------------------------- 966, 967, 968
+
+-- Two AST subtrees are structurally identical for this check when they share a
+-- tag and the same children at each position, recursing through the arrays.
+-- Source positions (line, offset, end_offset) are deliberately ignored.
+local function same_ast(a, b)
+   if type(a) ~= "table" or type(b) ~= "table" then return a == b end
+   if a.tag ~= b.tag then return false end
+   if #a ~= #b then return false end
+   for i = 1, #a do
+      if not same_ast(a[i], b[i]) then return false end
+   end
+   return true
+end
+
+-- A statement list is empty when the block node holds no executable statement.
+local function block_empty(block)
+   for _, stmt in ipairs(block) do
+      if stmt and stmt.tag then return false end
+   end
+   return true
+end
+
+local function detect_if_same_then_else(ctx)
+   if not lint_gate.wanted(ctx.opts, "966") then return end
+
+   ctx:each_node(function(node)
+      if node.tag == "If" then
+         -- Layout: {cond1, block1, cond2, block2, ..., [else_block]}. The even
+         -- indices are the conditional blocks; an odd length adds a trailing else.
+         local blocks = {}
+         for index = 2, #node, 2 do
+            blocks[#blocks + 1] = node[index]
+         end
+         if #node % 2 == 1 then blocks[#blocks + 1] = node[#node] end
+         for i = 1, #blocks do
+            if block_empty(blocks[i]) then break end
+            for j = i + 1, #blocks do
+               if block_empty(blocks[j]) then break end
+               if same_ast(blocks[i], blocks[j]) then
+                  ctx:emit("966", node)
+                  return -- one finding per if
+               end
+            end
+         end
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_if_same_then_else
+
+local function detect_ifs_same_cond(ctx)
+   if not lint_gate.wanted(ctx.opts, "967") then return end
+
+   ctx:each_node(function(node)
+      if node.tag == "If" then
+         local seen = {}
+         for index = 1, #node - 1, 2 do
+            local cond = node[index]
+            for _, earlier in ipairs(seen) do
+               if same_ast(cond, earlier) then
+                  ctx:emit("967", cond)
+                  return
+               end
+            end
+            seen[#seen + 1] = cond
+         end
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_ifs_same_cond
+
+local function detect_mixed_table(ctx)
+   if not lint_gate.wanted(ctx.opts, "968") then return end
+
+   ctx:each_node(function(node)
+      if node.tag == "Table" then
+         local has_positional, has_keyed = false, false
+         for _, entry in ipairs(node) do
+            if entry.tag == "Pair" then
+               has_keyed = true
+            else
+               has_positional = true
+            end
+         end
+         if has_positional and has_keyed then
+            ctx:emit("968", node)
+         end
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_mixed_table
 
 --- The detectors this module contributes, in run order.
 function M.detectors()
