@@ -114,3 +114,41 @@ describe("952 setting or mutating a non-standard global (#335)", function()
       assert_equal(#names_of("counter = 0\n", {}, "952"), 0)
    end)
 end)
+
+describe("953 setting a read-only global (#336)", function()
+   local function messages(source)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, LINT)) do
+         if finding.code == "953" then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("reports assigning a standard global as setting", function()
+      local found = messages("print = nil\n")
+      assert_equal(#found, 1)
+      assert_match(found[1], "^setting read%-only global variable %(print%)", found[1])
+   end)
+
+   it("reports assigning a field of a standard library as setting a field", function()
+      local found = messages("os.execute = function() end\n")
+      assert_equal(#found, 1)
+      assert_match(found[1], "^setting a field of read%-only global variable %(os%)", found[1])
+   end)
+
+   it("is not also a 952", function()
+      assert_equal(#names_of("string.format = f\n", nil, "952"), 0)
+   end)
+
+   it("_G is writable, so setting a field of it is not reported", function()
+      assert_equal(#messages("_G.anything = 1\n"), 0)
+   end)
+
+   it("a local with a standard name is not reported", function()
+      assert_equal(#messages("local print = print\nprint = nil\n"), 0)
+   end)
+
+   it("is off unless asked for", function()
+      assert_equal(#names_of("print = nil\n", {}, "953"), 0)
+   end)
+end)
