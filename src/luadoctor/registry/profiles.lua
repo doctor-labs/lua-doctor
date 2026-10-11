@@ -114,6 +114,20 @@ local function validate(name, declaration)
             assert(type(entry.file) == "string",
                "every " .. name .. ".entry_points entry needs file as a path glob string")
          end
+         if entry.params ~= nil then
+            -- The parameter types of the API, for the lint rules: a list of
+            -- `string`, `number`, `table`, `function`, `any`, optionally
+            -- suffixed `?`, and a final `...`.
+            assert(type(entry.params) == "table",
+               "every " .. name .. "." .. key .. " entry needs params as a list of type names")
+            for index, param in ipairs(entry.params) do
+               assert(type(param) == "string"
+                  and (param == "..." or param:match("^%a+%??$")),
+                  "every " .. name .. "." .. key .. " params entry must be a type name, optionally ending in ?, or ...")
+               assert(param ~= "..." or index == #entry.params,
+                  "every " .. name .. "." .. key .. " params list may only end in ...")
+            end
+         end
          if entry.channel ~= nil then
             assert(type(entry.channel) == "string",
                "every " .. name .. "." .. key .. " entry needs channel as a string")
