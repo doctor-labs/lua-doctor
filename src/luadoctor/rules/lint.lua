@@ -8,6 +8,7 @@
 --   951  accessing an undefined variable        (luacheck 113, selene undefined_variable)
 --   952  setting or mutating a non-standard global (luacheck 111, 112)
 --   953  setting a read-only global or a field of one (luacheck 121, 122)
+--   954  setting or accessing an undefined field of a global (luacheck 142, 143)
 --
 -- Opt-in: see rules/lint_gate.lua. Code range 950-979.
 local M = {}
@@ -26,6 +27,8 @@ local EMITTED = {
    ["112"] = {code = "952", action = "mutating"},
    ["121"] = {code = "953", action = "setting"},
    ["122"] = {code = "953", action = "setting a field of"},
+   ["142"] = {code = "954", action = "setting"},
+   ["143"] = {code = "954", action = "accessing"},
 }
 
 -- The raw warnings of detect_globals, once per file: several lint rules read
@@ -72,6 +75,16 @@ local function span(ctx, warning)
       end_offset = start + math.max(0, (warning.end_column or warning.column) - warning.column)}
 end
 
+-- `os.execte`: the global and the fields indexed from it, as far as they are
+-- literal names (an unknown key is written `?`).
+local function field_path(warning)
+   local parts = {warning.name}
+   for _, key in ipairs(warning.indexing or {}) do
+      parts[#parts + 1] = type(key) == "string" and key or "?"
+   end
+   return table.concat(parts, ".")
+end
+
 local function detect_names(ctx)
    local wanted = {}
    local any = false
@@ -88,7 +101,8 @@ local function detect_names(ctx)
       local luacheck_code = classify(std, warning)
       local target = luacheck_code and wanted[luacheck_code]
       if target then
-         ctx:emit(target.code, span(ctx, warning), {name = warning.name, action = target.action})
+         ctx:emit(target.code, span(ctx, warning),
+            {name = target.code == "954" and field_path(warning) or warning.name, action = target.action})
       end
    end
 end

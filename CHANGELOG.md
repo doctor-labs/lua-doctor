@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 ## Unreleased
 
 - Taint follows a method call and a function held as a value, within one file (#327, #328). `M:run(x)` and `M.run(x)` bind the callee's parameters when `M` is a table the file builds (`function M:run`, `function M.run`, `M.run = f`, `{run = f}`), a method call's receiver is the callee's first formal, a function passed to a helper that calls it (`apply(cb, x)`) is bound to the helper's parameter, and the return value of a method or callback carries its argument's taint. Computed keys (`M[k](x)`) and a function returned from a function are not followed. New `src/luadoctor/engine/fn_targets.lua`, `test/spec/method_callback_taint_spec.lua`.
+- 954 (opt-in lint, low): setting or accessing an undefined field of a global the std defines, luacheck 142/143 (#338): `string.fromat(...)`, `os.execte`. The field table is luacheck's standard for the `--std` Lua standard; a platform table a profile declares (`luci`) accepts any field. The default-on 713 still reports the subset that is one edit from a declared sink.
+
 - 953 (opt-in lint, low): setting a read-only global (`os = nil`) or a field of one (`string.format = f`), luacheck 121/122 (#336). Read-only comes from luacheck's standard tables; a global a platform profile declares is writable.
 
 - 952 (opt-in lint, low): setting or mutating a global the std does not define, luacheck 111/112 (#335). `foo = 1` is "setting", `foo.bar = 1` "mutating". A global the std defines is not reported here (see the read-only and undefined-field codes), and neither is a local.
