@@ -215,6 +215,9 @@ default, because a firmware tree reports them by the thousand: they run under
 | 977 | low | CWE-0 | indentation has a space before a tab (luacheck 621) |
 | 978 | low | CWE-0 | use of _G: reading or writing the global table directly, or indexing it (selene global_usage) |
 | 979 | low | CWE-0 | a comparison passed to type(): type() called with a comparison as its argument, e.g. type(x == "s") (selene type_check_inside_call) |
+| 982 | low | CWE-0 | unused local: a `local` (including `local function`) bound but never read (luacheck 211) |
+| 983 | low | CWE-0 | unused function argument: a named parameter never read, not `...` or `self` (luacheck 212) |
+| 984 | low | CWE-0 | unused loop variable: a generic-for key/value or numeric-for counter never read, not `_` (luacheck 213) |
 
 | 981 | low | CWE-0 | module-level global assigned but never read in the file (luacheck 131) |
 

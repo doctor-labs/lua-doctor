@@ -390,4 +390,21 @@ register {code = "979", severity = "low", cwe = "CWE-0", confidence = "high",
 register {code = "981", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "global {name} is assigned but never used"}
 
+-- luacheck 211. A local (including a local function) bound but never read in
+-- its scope. A call to a local function counts as a read; reading through
+-- `_G` counts as a read. Opt-in.
+register {code = "982", severity = "low", cwe = "CWE-0", confidence = "high",
+   message = "local variable {name} is bound but never read"}
+
+-- luacheck 212. A named function parameter that is never read. `...` and
+-- `self` are never flagged: they are not named parameters. Opt-in.
+register {code = "983", severity = "low", cwe = "CWE-0", confidence = "high",
+   message = "function argument {name} is never read"}
+
+-- luacheck 213. A loop variable that is never read: the key/value pair of a
+-- generic `for ... in`, and the counter of a numeric `for i = a, b do`. `_` as
+-- a name is the conventional throwaway and is not flagged. Opt-in.
+register {code = "984", severity = "low", cwe = "CWE-0", confidence = "high",
+   message = "loop variable {name} is never read"}
+
 return codes
