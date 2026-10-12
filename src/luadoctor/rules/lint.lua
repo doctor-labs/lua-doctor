@@ -67,10 +67,12 @@
 --   987  loop variable redefined by a local in the same scope  (luacheck 413): a
 --        loop variable shadowed by a `local` of the same name in the loop body
 --
--- Opt-in: see rules/lint_gate.lua. Code ranges 950-987 and 997-1002.
+-- Opt-in: see rules/lint_gate.lua. Code ranges 950-992 and 997-1002.
 local M = {}
 
 local detect_globals = require "luacheck.stages.detect_globals"
+local detect_unused_locals = require "luacheck.stages.detect_unused_locals"
+local detect_unused_fields = require "luacheck.stages.detect_unused_fields"
 local std_names = require "luadoctor.registry.std_names"
 local platform_api = require "luadoctor.registry.platform_api"
 local lint_gate = require "luadoctor.rules.lint_gate"
@@ -87,6 +89,13 @@ local EMITTED = {
    ["122"] = {code = "953", action = "setting a field of"},
    ["142"] = {code = "954", action = "setting"},
    ["143"] = {code = "954", action = "accessing"},
+   -- 988-992: unused and overwritten values (luacheck 311/312/313/314/231/331)
+   ["311"] = {code = "988"},
+   ["312"] = {code = "989"},
+   ["313"] = {code = "990"},
+   ["314"] = {code = "991"},
+   ["231"] = {code = "992"},
+   ["331"] = {code = "992"},
 }
 
 -- The raw warnings of detect_globals, once per file: several lint rules read
@@ -101,6 +110,27 @@ local function raw_warnings(chstate)
       for i = #chstate.warnings, before + 1, -1 do chstate.warnings[i] = nil end
    end
    chstate.lint_globals = raw
+   return raw
+end
+
+-- Like raw_warnings but for the unused-value stages. detect_unused_locals and
+-- detect_unused_fields are not run by lua-doctor's pipeline; they are invoked
+-- here, lazily, only when a 988-992 code is enabled, so a default run costs
+-- nothing.
+local function raw_unused_warnings(chstate)
+   if chstate.lint_unused then return chstate.lint_unused end
+   local raw = {}
+   if chstate.resolved_locals then
+      local before = #chstate.warnings
+      detect_unused_locals.run(chstate)
+      for i = before + 1, #chstate.warnings do raw[#raw + 1] = chstate.warnings[i] end
+      for i = #chstate.warnings, before + 1, -1 do chstate.warnings[i] = nil end
+      before = #chstate.warnings
+      detect_unused_fields.run(chstate)
+      for i = before + 1, #chstate.warnings do raw[#raw + 1] = chstate.warnings[i] end
+      for i = #chstate.warnings, before + 1, -1 do chstate.warnings[i] = nil end
+   end
+   chstate.lint_unused = raw
    return raw
 end
 
@@ -189,6 +219,47 @@ local function detect_names(ctx)
 end
 
 detectors[#detectors + 1] = detect_names
+
+-- ---------------------------------------------------------------- 988, 989, 990, 991, 992
+
+-- 988-992 consume the luacheck warnings from detect_unused_locals and
+-- detect_unused_fields, mapped through the EMITTED table above:
+--   311 -> 988  value assigned to a local overwritten before use
+--   312 -> 989  value assigned to an argument overwritten before use
+--   313 -> 990  value assigned to a loop variable overwritten before use
+--   314 -> 991  table field value overwritten before use
+--   231 -> 992  variable assigned but never accessed
+--   331 -> 992  value assigned is mutated but never accessed
+
+local function detect_unused_values(ctx)
+   -- Bail early when none of the codes is enabled.
+   if not lint_gate.wanted(ctx.opts, "988")
+      and not lint_gate.wanted(ctx.opts, "989")
+      and not lint_gate.wanted(ctx.opts, "990")
+      and not lint_gate.wanted(ctx.opts, "991")
+      and not lint_gate.wanted(ctx.opts, "992") then
+      return
+   end
+
+   if not ctx.chstate.resolved_locals then return end
+
+   local raw = raw_unused_warnings(ctx.chstate)
+
+   for _, warning in ipairs(raw) do
+      local target = EMITTED[warning.code]
+      if target and lint_gate.wanted(ctx.opts, target.code) then
+         -- 314 carries a {field} name, not a {name}.
+         if warning.code == "314" then
+            ctx:emit("991", span(ctx, warning),
+               {name = warning.field, field = warning.field})
+         else
+            ctx:emit(target.code, span(ctx, warning), {name = warning.name})
+         end
+      end
+   end
+end
+
+detectors[#detectors + 1] = detect_unused_values
 
 -- ---------------------------------------------------------------- 997-1002
 

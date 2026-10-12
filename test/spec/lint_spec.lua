@@ -767,3 +767,41 @@ describe("421-433 shadowing in nested scope (#345)", function()
       assert_equal(#found("997", "local function f()\n  local x\n  do\n    local x\n  end\nend\n", {}), 0)
    end)
 end)
+
+describe("311-314/331 value overwritten before use (#342)", function()
+   local function found(code, source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == code then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("988 value assigned to local is overwritten before use (luacheck 311)", function()
+      assert_equal(#found("988", "local function f()\n  local x = 1\n  x = 2\nreturn x\nend\n"), 1)
+      assert_equal(#found("988", "local function f()\n  local x = 1\nreturn x\nend\n"), 0)
+   end)
+
+   it("989 value of argument is overwritten before use (luacheck 312)", function()
+      assert_equal(#found("989", "local function f(a)\n  a = 2\nreturn a\nend\n"), 1)
+      assert_equal(#found("989", "local function f(a)\nreturn a\nend\n"), 0)
+   end)
+
+   it("990 value of loop variable is overwritten before use (luacheck 313)", function()
+      assert_equal(#found("990", "for i = 1, 3 do\n  i = 2\nprint(i)\nend\n"), 1)
+   end)
+
+   it("991 table field value is overwritten before use (luacheck 314)", function()
+      assert_equal(#found("991", "local t = {x = 1, x = 2}\nreturn t\n"), 1)
+      assert_equal(#found("991", "local t = {x = 1}\nreturn t\n"), 0)
+   end)
+
+   it("992 value assigned is mutated but never accessed (luacheck 331)", function()
+      assert_equal(#found("992", "local function f()\n  local x = 1\n  x = 2\nend\n"), 1)
+      assert_equal(#found("992", "local function f()\n  local x = 1\nreturn x\nend\n"), 0)
+   end)
+
+   it("stays off by default", function()
+      assert_equal(#found("988", "local function f()\n  local x = 1\n  x = 2\nreturn x\nend\n", {}), 0)
+   end)
+end)
