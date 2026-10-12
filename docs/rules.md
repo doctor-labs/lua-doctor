@@ -184,7 +184,7 @@ statement about its data, not about its code.
 
 Names and library use, judged the way luacheck and selene judge them. Off by
 default, because a firmware tree reports them by the thousand: they run under
-`--category lint` or an `--enable 95` pattern (also `--only`). Range 950-979.
+`--category lint` or an `--enable 95` pattern (also `--only`). Range 950-981.
 
 | Code | Severity | CWE | Meaning |
 | --- | --- | --- | --- |
@@ -215,6 +215,8 @@ default, because a firmware tree reports them by the thousand: they run under
 | 977 | low | CWE-0 | indentation has a space before a tab (luacheck 621) |
 | 978 | low | CWE-0 | use of _G: reading or writing the global table directly, or indexing it (selene global_usage) |
 | 979 | low | CWE-0 | a comparison passed to type(): type() called with a comparison as its argument, e.g. type(x == "s") (selene type_check_inside_call) |
+
+| 981 | low | CWE-0 | module-level global assigned but never read in the file (luacheck 131) |
 
 ## 9xx - meta
 

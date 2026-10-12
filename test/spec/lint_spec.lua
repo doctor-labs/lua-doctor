@@ -677,3 +677,27 @@ describe("978-979 _G usage, a comparison inside type() (#375, #378)", function()
       end
    end)
 end)
+
+describe("981 unused module-level global (#337)", function()
+   local function found(code, source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == code then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("981 a global assigned but never read in the file", function()
+      assert_equal(#found("981", "function unused_helper()\n  return 1\nend\n"), 1)
+      assert_equal(#found("981", "used_global = 2\nreturn used_global\n"), 0)
+      assert_equal(#found("981", "function helper()\n  return 1\nend\nreturn helper()\n"), 0)
+      -- a local is not a global; not flagged here (that is 211, a separate rule)
+      assert_equal(#found("981", "local function f()\n  return 1\nend\n"), 0)
+      -- read through _G counts as a use
+      assert_equal(#found("981", "function helper()\n  return 1\nend\nreturn _G.helper\n"), 0)
+   end)
+
+   it("stays off by default", function()
+      assert_equal(#found("981", "function unused_helper()\n  return 1\nend\n", {}), 0)
+   end)
+end)
