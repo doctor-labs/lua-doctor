@@ -55,6 +55,9 @@
 --   984  unused loop variable                       (luacheck 213): a generic for key/value
 --        or a numeric for counter that is never read (`_` is not flagged)
 --
+--   980  unreachable code after a terminating statement  (luacheck 511): a
+--        statement follows a return, break, goto, or an error()/os.exit() call
+--        in the same block, so it can never execute
 --   981  module-level global assigned but never read (luacheck 131)
 --
 -- Opt-in: see rules/lint_gate.lua. Code range 950-984.
@@ -1288,6 +1291,159 @@ local function detect_unused(ctx)
 end
 
 detectors[#detectors + 1] = detect_unused
+
+-- ---------------------------------------------------------------- 980
+
+-- luacheck unreachable. A statement follows a terminating statement in the same
+-- block, so it can never execute: `return`, `break`, `goto label`, or a call to
+-- the global `error` / `os.exit`. luacheck reports this as 511.
+--
+-- A "block" is any statement list: the chunk AST (a table with no tag whose
+-- elements are statements), and the body block of If/While/Repeat/Fornum/Forin/
+-- Do/Function nodes. Each block type stores its statement list at the same
+-- index layout used by detect_multiple_statements (975) below, so the two share
+-- the block_children() helper extracted from it.
+--
+-- A terminating statement inside a nested block (e.g. inside an `if` branch)
+-- does NOT make statements in the outer block unreachable -- only the same
+-- statement list is inspected. The first statement after a terminator in a
+-- block is reported; the terminator itself is not.
+-- Dotted path of a callee expression that resolves to a global, mirroring
+-- context:path_of but local so is_terminating stays a module-level closure.
+-- Returns nil for locals and anything it cannot resolve from literals.
+local function callee_path(node)
+   if type(node) ~= "table" then return nil end
+   if node.tag == "Id" and not node.var then return node[1] end
+   if node.tag == "Index" and node[2] and node[2].tag == "String" then
+      local base = callee_path(node[1])
+      if base then return base .. "." .. node[2][1] end
+   end
+   return nil
+end
+
+local function is_terminating(node)
+   if not node or type(node) ~= "table" then return false end
+   local tag = node.tag
+   if tag == "Return" or tag == "Break" or tag == "Goto" then
+      return true
+   end
+   -- A call that always aborts: the global error(...) or os.exit(...). A local
+   -- named error/os shadows the global and is not terminating here. `error(x)`
+   -- is a Call whose callee is the global Id "error"; `os.exit(x)` is a Call
+   -- whose callee is the Index os.exit (the global Id "os" indexed by the
+   -- string "exit"). The colon form `os:exit(x)` is an Invoke with the global
+   -- Id "os" as its base and the method-name Id "exit".
+   if tag == "Call" then
+      local path = callee_path(node[1])
+      return path == "error" or path == "os.exit"
+   elseif tag == "Invoke" then
+      local base = node[1]
+      if base and base.tag == "Id" and base[1] == "os" and not base.var then
+         local name = node[2]
+         if name and name[1] == "exit" then return true end
+      end
+   end
+   return false
+end
+
+-- Extract the statement-list (block) children from a block-container node, the
+-- same layout detect_multiple_statements relies on.
+local function block_children_980(node)
+   local tag = node.tag
+   if tag == "If" then
+      local blocks = {}
+      for i = 2, #node, 2 do blocks[#blocks + 1] = node[i] end
+      if #node % 2 == 1 then blocks[#blocks + 1] = node[#node] end
+      return blocks
+   elseif tag == "While" then
+      return {node[2]}
+   elseif tag == "Repeat" then
+      return {node[1]}
+   elseif tag == "Fornum" or tag == "Forin" then
+      return {node[#node]}
+   elseif tag == "Do" then
+      -- A `do` block IS its body: {tag="Do", stmt, stmt, ...}.
+      return {node}
+   elseif tag == "Function" then
+      -- {tag="Function", args, body} — the body block is the last element.
+      return {node[#node]}
+   end
+   return {}
+end
+
+local function detect_unreachable(ctx)
+   if not lint_gate.wanted(ctx.opts, "980") then return end
+
+   -- Name the terminator that made the following code unreachable, for the
+   -- message: return / break / goto / error call.
+   local function terminator_name(stmt)
+      local tag = stmt.tag
+      if tag == "Return" then return "return" end
+      if tag == "Break" then return "break" end
+      if tag == "Goto" then return "goto" end
+      return "error call"
+   end
+
+   -- Walk one block (a statement list). The first statement following a
+   -- terminating statement is reported; the rest of the block is also
+   -- unreachable but 980 is emitted once per terminator to keep output small.
+   local function check_block(block)
+      if type(block) ~= "table" then return end
+      for i = 1, #block do
+         local stmt = block[i]
+         if is_terminating(stmt) then
+            local after = block[i + 1]
+            if after and after.tag and after.line then
+               ctx:emit("980", after, {terminator = terminator_name(stmt)})
+            end
+            -- Only the first statement after a terminator is reported; the
+            -- remaining trailing statements are unreachable too but 980 is
+            -- one-per-terminator to keep output small, so stop here.
+            return
+         end
+      end
+   end
+
+   -- Visit every block exactly once. A chunk/block is a no-tag table of
+   -- statements; a container (If/While/Repeat/Fornum/Forin/Do/Function) owns
+   -- one or more child blocks. Containers can be nested inside any other node
+   -- (e.g. a `local function f() ... end` is a Localrec wrapping a Function),
+   -- so the walk descends into every child of every node, not just the
+   -- container-tagged ones, and memoizes visited (no-tag) blocks by table
+   -- identity to avoid checking the same block twice.
+   local seen = {}
+   local function walk(node, depth)
+      if depth > 200 or type(node) ~= "table" then return end
+
+      if node.tag then
+         if node.tag == "Function" or node.tag == "Do"
+            or node.tag == "While" or node.tag == "Repeat"
+            or node.tag == "Fornum" or node.tag == "Forin"
+            or node.tag == "If" then
+            for _, block in ipairs(block_children_980(node)) do
+               if type(block) == "table" and not seen[block] then
+                  seen[block] = true
+                  check_block(block)
+               end
+            end
+         end
+      else
+         -- A chunk/block: a table with no tag whose elements are statements.
+         if not seen[node] then
+            seen[node] = true
+            check_block(node)
+         end
+      end
+
+      for _, child in ipairs(node) do
+         walk(child, depth + 1)
+      end
+   end
+
+   walk(ctx.chstate.ast, 0)
+end
+
+detectors[#detectors + 1] = detect_unreachable
 
 --- The detectors this module contributes, in run order.
 function M.detectors()

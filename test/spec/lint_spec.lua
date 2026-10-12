@@ -678,6 +678,30 @@ describe("978-979 _G usage, a comparison inside type() (#375, #378)", function()
    end)
 end)
 
+describe("980 unreachable code after a terminating statement (#346)", function()
+   local function found(code, source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == code then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("980 statements after return/break/goto in the same block", function()
+      assert_equal(#found("980", "local function f()\n  return 1\n  print('x')\nend\n"), 1)
+      assert_equal(#found("980", "for i = 1, 3 do\n  break\n  print(i)\nend\n"), 1)
+      assert_equal(#found("980", "do\n  goto done\n  print('x')\n  ::done::\nend\n"), 1)
+      -- the terminating statement as the last in its block is fine
+      assert_equal(#found("980", "local function f()\n  return 1\nend\n"), 0)
+      -- a return inside a branch does not make the code after the if unreachable
+      assert_equal(#found("980", "local function f(x)\n  if x then return 1 end\n  print('x')\nend\n"), 0)
+   end)
+
+   it("stays off by default", function()
+      assert_equal(#found("980", "local function f()\n  return 1\n  print('x')\nend\n", {}), 0)
+   end)
+end)
+
 describe("981 unused module-level global (#337)", function()
    local function found(code, source, opts)
       local out = {}

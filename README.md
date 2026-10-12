@@ -367,7 +367,7 @@ sensitive reaching definitions. On top of that `lua-doctor` adds taint tracking
 with a stable code, severity, confidence, CWE and a source-to-sink trace, and
 plain, JSON, SARIF and HTML reports.
 
-73 registered rule codes, in five categories plus the opt-in `lint` (from `bin/lua-doctor rules list`):
+74 registered rule codes, in five categories plus the opt-in `lint` (from `bin/lua-doctor rules list`):
 
 ```sh
 bin/lua-doctor rules list | head -5
