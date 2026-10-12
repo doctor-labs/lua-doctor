@@ -5,6 +5,8 @@ All notable changes to this project are documented here. The format follows
 
 ## Unreleased
 
+- Opt-in lints 999-1002: unused local/argument/loop variable and variable mutated but never accessed (luacheck 221/231/233/241) (#341).
+
 - Per-file config overrides: `files = {["glob"] = {disable = ..., severity = ...}}` in `lua-doctor.config.lua` (#385).
 - Opt-in lint 981: a module-level global assigned but never read in the file, luacheck 131 (#337).
 - Report formats `junit`, `tap` and `visual_studio` (#387).

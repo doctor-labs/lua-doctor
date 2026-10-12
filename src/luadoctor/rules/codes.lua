@@ -9,7 +9,7 @@ local codes = {}
 local registry = {}
 
 local function register(spec)
-   assert(spec.code and spec.code:match("^%d%d%d$"), "code must be three digits: " .. tostring(spec.code))
+   assert(spec.code and spec.code:match("^%d%d%d%d?$"), "code must be three or four digits: " .. tostring(spec.code))
    assert(not registry[spec.code], "duplicate warning code " .. spec.code)
    assert(spec.message, "code " .. spec.code .. " needs a message")
    assert(spec.severity, "code " .. spec.code .. " needs a severity")
@@ -389,5 +389,26 @@ register {code = "979", severity = "low", cwe = "CWE-0", confidence = "high",
 -- `function unused_helper() ... end` or `global_name = ...` with no use of the name.
 register {code = "981", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "global {name} is assigned but never used"}
+-- luacheck 231 (var), 221 (var never set). A local that is bound but never
+-- read. `_` is the throwaway and is not flagged. Opt-in.
+register {code = "999", severity = "low", cwe = "CWE-0", confidence = "high",
+   message = "variable {name} is never accessed"}
+
+-- luacheck 231/232 (arg). A named function parameter that is never read.
+-- `...` and `self` are not flagged. Opt-in.
+register {code = "1000", severity = "high", cwe = "CWE-0", confidence = "high",
+   message = "function argument {name} is never accessed"}
+
+-- luacheck 233. A loop variable that is never read: the key/value pair of a
+-- generic `for k, v in ...` and the counter of a numeric `for i = a, b do`.
+-- `_` as a name is not flagged. Opt-in.
+register {code = "1001", severity = "high", cwe = "CWE-0", confidence = "high",
+   message = "loop variable {name} is never accessed"}
+
+-- luacheck 241. A local that is assigned multiple times (or declared and then
+-- assigned) but is never read. A single assignment that is never read is 999;
+-- the distinction is that this variable has more than one definition. Opt-in.
+register {code = "1002", severity = "medium", cwe = "CWE-0", confidence = "high",
+   message = "variable {name} is mutated but never accessed"}
 
 return codes

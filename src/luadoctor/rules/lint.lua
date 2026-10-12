@@ -48,10 +48,17 @@
 --   979  a comparison inside type()              (selene type_check_inside_call): type()
 --        is called with a comparison expression (e.g. type(x == "s")) as its argument
 --        instead of comparing type(x) to a string literal
---
+--   999  unused local                              (luacheck 221/231): a local that is
+--        bound but never read, with a single definition
+--   1000  unused function argument                 (luacheck 231/241): a named parameter
+--        that is never read (`...` and `self` are not flagged)
+--   1001  unused loop variable                      (luacheck 233): a loop variable
+--        that is never read (`_` is not flagged)
+--   1002  variable mutated but never accessed       (luacheck 241): a local assigned
+--        multiple times that is never read
 --   981  module-level global assigned but never read (luacheck 131)
 --
--- Opt-in: see rules/lint_gate.lua. Code range 950-981.
+-- Opt-in: see rules/lint_gate.lua. Code range 950-981, 999-1002.
 local M = {}
 
 local detect_globals = require "luacheck.stages.detect_globals"
@@ -1204,6 +1211,107 @@ local function detect_unused_global(ctx)
 end
 
 detectors[#detectors + 1] = detect_unused_global
+
+-- ---------------------------------------------------------------- 999, 1000, 1001, 1002
+
+-- luacheck 221/231/233/241, mapped to lua-doctor codes 999/1000/1001/1002.
+--
+-- `resolve_locals` (run in parse_context) gives flow-sensitive reaching
+-- definitions: each `var` object on an Id node carries `var.accessed`, set by
+-- linearize for every resolved read, and `var.values[*].used`, set by
+-- resolve_locals when a reaching definition was actually consumed. For these
+-- lints the relevant fact is "was this name ever read at all": `var.accessed`
+-- already answers that, flow-insensitively, and is cheaper than walking the
+-- RDefs table luacheck populated for the taint pass.
+--
+-- A `var` is one of:
+--   "var"   - a local (declared with `local` or `local function`)
+--   "arg"   - a named function parameter
+--   "loop"  - a generic-for loop variable (for k, v in ...)
+--   "loopi" - a numeric-for counter (for i = a, b do)
+-- The var's `node` is the declaration Id; `var.accessed` is true when any Id
+-- referencing it was scanned as an expression during linearize.
+--
+-- 999 covers a local with a single definition (or none) that is never read;
+-- 1002 covers a local with multiple definitions that is never read — the
+-- "mutated but never accessed" case. The boundary is `#var.values`: one value
+-- is a dead binding (999), more than one is a mutated-but-dead variable (1002).
+--
+-- We walk the AST once and visit each var by identity, so a name with many
+-- references is checked once. When resolve_locals was skipped (904, large
+-- file), `var.accessed` is still set by linearize, so the detection is sound;
+-- the gate and the 904 coverage gap already tell the operator the file was
+-- approximate.
+
+-- Does the var hold a function value (a local function, or a local assigned
+-- a function literal)? Such locals are not flagged: they may be returned or
+-- passed as callbacks, and their "use" is a call site luacheck's var tracking
+-- does not always see in a single file.
+local function is_function_local(var)
+   for _, value in ipairs(var.values) do
+      if value.type == "func" then return true end
+   end
+   return false
+end
+
+local function collect_unused(ctx, var, seen)
+   if not var or seen[var] then return end
+   seen[var] = true
+
+   local name = var.name
+   local vtype = var.type
+
+   if vtype == "var" then
+      if name == "_" then return end
+      if is_function_local(var) then return end
+      if not var.accessed then
+         if #var.values > 1 then
+            if lint_gate.wanted(ctx.opts, "1002") then
+               ctx:emit("1002", var.node, {name = name})
+            end
+         else
+            if lint_gate.wanted(ctx.opts, "999") then
+               ctx:emit("999", var.node, {name = name})
+            end
+         end
+      end
+   elseif vtype == "arg" then
+      -- `...` and `self` are not flagged.
+      if name ~= "..." and name ~= "self" and not var.self then
+         if not var.accessed and lint_gate.wanted(ctx.opts, "1000") then
+            ctx:emit("1000", var.node, {name = name})
+         end
+      end
+   elseif vtype == "loop" or vtype == "loopi" then
+      if name ~= "_" and not var.accessed then
+         if lint_gate.wanted(ctx.opts, "1001") then
+            ctx:emit("1001", var.node, {name = name})
+         end
+      end
+   end
+end
+
+local function detect_unused_vars(ctx)
+   if not lint_gate.wanted(ctx.opts, "999")
+      and not lint_gate.wanted(ctx.opts, "1000")
+      and not lint_gate.wanted(ctx.opts, "1001")
+      and not lint_gate.wanted(ctx.opts, "1002") then
+      return
+   end
+
+   -- resolve_locals attaches `.var` to declaration Ids and is what gives the
+   -- access tracking its meaning; skip when it did not run.
+   if not ctx.chstate.resolved_locals then return end
+
+   local seen = {}
+   ctx:each_node(function(node)
+      if node.var then
+         collect_unused(ctx, node.var, seen)
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_unused_vars
 
 --- The detectors this module contributes, in run order.
 function M.detectors()

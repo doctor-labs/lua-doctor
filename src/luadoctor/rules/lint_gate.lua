@@ -1,5 +1,4 @@
--- The lint family (950-981) is opt-in.
---
+-- The lint family (950-981, 999-1002) is opt-in.
 -- These codes are about names and library use, not about a flow, and a firmware
 -- tree reports them by the thousand (every global a platform provides and the
 -- std does not list). On by default they would move every score and every exit

@@ -25,6 +25,8 @@ function categories.of(code)
    if n >= 740 and n <= 799 then return "payload" end
    if n >= 800 and n <= 899 then return "artifact" end
    if n >= 950 and n <= 981 then return "lint" end
+   if n >= 950 and n <= 979 then return "lint" end
+   if n >= 999 and n <= 1002 then return "lint" end
    if n < 100 or (n >= 900 and n <= 949) then return "meta" end
    return nil
 end

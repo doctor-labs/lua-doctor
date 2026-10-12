@@ -19,9 +19,12 @@ describe("rule doc pages", function()
          local page = read(path)
          assert_true(page, path .. " is missing")
          assert_true(page:find("^# " .. rule.code .. " "), path .. " must start with '# " .. rule.code .. " '")
-         for _, heading in ipairs({"## What it means", "## Example", "## How to fix", "## Fix prompt"}) do
+         for _, heading in ipairs({"## What it means", "## Example", "## Fix prompt"}) do
             assert_true(page:find(heading, 1, true), path .. " has no '" .. heading .. "' section")
          end
+         -- "## How to fix" is optional: codes whose fix is trivial (e.g. 999
+         -- unused local) omit it so the doctor/1 envelope writes remedy null
+         -- instead of a near-empty string (see test/spec/doctor_contract_spec.lua).
          assert_true(page:find("```prompt\n", 1, true), path .. " has no ```prompt fenced block")
          assert_true(page:find(rule.severity, 1, true) or rule.code == "708",
             path .. " does not state the severity " .. rule.severity)

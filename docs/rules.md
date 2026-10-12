@@ -185,6 +185,7 @@ statement about its data, not about its code.
 Names and library use, judged the way luacheck and selene judge them. Off by
 default, because a firmware tree reports them by the thousand: they run under
 `--category lint` or an `--enable 95` pattern (also `--only`). Range 950-981.
+`--category lint` or an `--enable 95`/`--enable 99`/`--enable 100` pattern (also `--only`). Range 950-979, 999-1002.
 
 | Code | Severity | CWE | Meaning |
 | --- | --- | --- | --- |
@@ -217,6 +218,11 @@ default, because a firmware tree reports them by the thousand: they run under
 | 979 | low | CWE-0 | a comparison passed to type(): type() called with a comparison as its argument, e.g. type(x == "s") (selene type_check_inside_call) |
 
 | 981 | low | CWE-0 | module-level global assigned but never read in the file (luacheck 131) |
+| 979 | low | CWE-0 | a comparison passed to type(): type() called with a comparison as its argument, e.g. type(x == "s") (selene type_check_inside_call) |
+|| 999 | low | CWE-0 | unused local: a local bound but never read, with a single definition (luacheck 211/231) |
+| 1000 | high | CWE-0 | unused function argument: a named parameter never read (`...` and `self` are not flagged) (luacheck 212/232) |
+| 1001 | high | CWE-0 | unused loop variable: a generic-for key/value pair or a numeric-for counter never read (`_` is not flagged) (luacheck 213/233) |
+| 1002 | medium | CWE-0 | variable mutated but never accessed: a local assigned multiple times but never read (luacheck 241) |
 
 ## 9xx - meta
 
