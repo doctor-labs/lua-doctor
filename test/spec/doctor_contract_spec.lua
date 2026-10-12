@@ -54,7 +54,7 @@ describe("the doctor/1 envelope", function()
    end)
 
    it("writes remedy null when a rule page has no How to fix section", function()
-      local text = api.format({{code = "999", severity = "low", confidence = "high", message = "m",
+      local text = api.format({{code = "996", severity = "low", confidence = "high", message = "m",
          name = "n", file = "x.lua", line = 1, column = 1}}, "json")
       assert_match(text, '"remedy": null')
    end)

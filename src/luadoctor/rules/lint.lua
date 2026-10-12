@@ -67,7 +67,7 @@
 --   987  loop variable redefined by a local in the same scope  (luacheck 413): a
 --        loop variable shadowed by a `local` of the same name in the loop body
 --
--- Opt-in: see rules/lint_gate.lua. Code range 950-987.
+-- Opt-in: see rules/lint_gate.lua. Code ranges 950-987 and 997-1002.
 local M = {}
 
 local detect_globals = require "luacheck.stages.detect_globals"
@@ -189,6 +189,52 @@ local function detect_names(ctx)
 end
 
 detectors[#detectors + 1] = detect_names
+
+-- ---------------------------------------------------------------- 997-1002
+
+-- REDEFINITION maps luacheck's redefinition/shadwing codes to the lua-doctor code
+-- that reports them. luacheck's linearize stage emits both:
+--   411/412/413 — same-scope redefinition (411 local, 412 argument, 413 loop var)
+--   421/422/423 — nested-scope shadowing (421 local, 422 argument, 423 loop var)
+--   431/432/433 — shadowing an upvalue (431 local, 432 argument, 433 loop var)
+-- The 41x and 43x codes are distinct: a same-scope redefinition is a different
+-- finding than a nested-scope shadowing, so they map to different lua-doctor codes.
+--
+-- Only the 42x/43x shadowing codes are mapped here; the 41x codes are not handled
+-- by this tool (same-scope redefinition is already covered by luacheck and is not
+-- a lua-doctor finding).
+local REDEFINITION = {
+   ["421"] = "997",
+   ["422"] = "998",
+   ["423"] = "999",
+   ["431"] = "1000",
+   ["432"] = "1001",
+   ["433"] = "1002",
+}
+
+-- luacheck's linearize stage records shadowing warnings (421-423, 431-433) in
+-- chstate.warnings alongside the linearization output, with .line, .column,
+-- .end_column and .name — the same shape as every other luacheck warning. They
+-- already carry the span we need; we just gate on whether any shadowing code is
+-- enabled (opt-in via category "lint") and emit.
+local function detect_shadowing(ctx)
+   local wanted = {}
+   for luacheck_code, target in pairs(REDEFINITION) do
+      if lint_gate.wanted(ctx.opts, target) then
+         wanted[luacheck_code] = target
+      end
+   end
+   if not next(wanted) then return end
+
+   for _, warning in ipairs(ctx.chstate.warnings) do
+      local target = wanted[warning.code]
+      if target then
+         ctx:emit(target, span(ctx, warning), {name = warning.name})
+      end
+   end
+end
+
+detectors[#detectors + 1] = detect_shadowing
 
 -- ---------------------------------------------------------------- 957
 
