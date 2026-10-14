@@ -187,6 +187,7 @@ local SUBCOMMANDS = {
    install = "luadoctor.cli.install_cmd",
    rules = "luadoctor.cli.rules_cmd",
    why = "luadoctor.cli.why_cmd",
+   lsp = "luadoctor.cli.lsp_cmd",
 }
 
 local function subcommand_root()
