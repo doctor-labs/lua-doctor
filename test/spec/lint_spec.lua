@@ -679,7 +679,6 @@ describe("978-979 _G usage, a comparison inside type() (#375, #378)", function()
 end)
 
 describe("981 unused module-level global (#337)", function()
-describe("221/231/233/241 variable never accessed or mutated before use (#341)", function()
    local function found(code, source, opts)
       local out = {}
       for _, finding in ipairs(api.check_source(source, opts or LINT)) do
@@ -702,34 +701,8 @@ describe("221/231/233/241 variable never accessed or mutated before use (#341)",
       assert_equal(#found("981", "function unused_helper()\n  return 1\nend\n", {}), 0)
    end)
 end)
-   it("999 a local is never accessed (luacheck 231)", function()
-      assert_equal(#found("999", "local function f()\n  local x = 1\nend\n"), 1)
-      assert_equal(#found("999", "local function f()\n  local x = 1\nreturn x\nend\n"), 0)
-   end)
 
-   it("1000 an argument is never accessed (luacheck 231/241)", function()
-      assert_equal(#found("1000", "local function f(a)\n  return 1\nend\n"), 1)
-      assert_equal(#found("1000", "local function f(a)\nreturn a\nend\n"), 0)
-      -- self is never flagged
-      assert_equal(#found("1000", "local function t:a()\nreturn 1\nend\n"), 0)
-      -- ... is never flagged
-      assert_equal(#found("1000", "local function f(...)\nreturn 1\nend\n"), 0)
-   end)
-
-   it("1001 a loop variable is never accessed (luacheck 233)", function()
-      assert_equal(#found("1001", "for i = 1, 3 do\n  print(j)\nend\n"), 1)
-      assert_equal(#found("1001", "for i = 1, 3 do\n  print(i)\nend\n"), 0)
-   end)
-
-   it("1002 a variable is mutated but never accessed (luacheck 241)", function()
-      assert_equal(#found("1002", "local function f()\n  local x\n  x = 1\nend\n"), 1)
-      assert_equal(#found("1002", "local function f()\n  local x\n  x = 1\nreturn x\nend\n"), 0)
-   end)
-
-   it("stays off by default", function()
-      assert_equal(#found("999", "local function f()\n  local x = 1\nend\n", {}), 0)
-   end)
-end)describe("221/231/233/241 variable never accessed or mutated before use (#341)", function()
+describe("221/231/233/241 variable never accessed or mutated before use (#341)", function()
    local function found(code, source, opts)
       local out = {}
       for _, finding in ipairs(api.check_source(source, opts or LINT)) do
