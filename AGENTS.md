@@ -135,7 +135,7 @@ reproducible.
 
 | Range | Meaning |
 | --- | --- |
-| 012 | unreadable `-- lua-doctor:` suppression directive |
+| 012 | unreadable `-- lua-doctor:` suppression directive, or a malformed `-- luacheck:` inline option (luacheck 021-023) |
 | 701-714 | command execution / dynamic code sinks |
 | 721-731 | firmware-specific (flash, uci chain, sandbox escape, DoS, store hop, HTTP header and subrequest writes) |
 | 741-750 | payload / backdoor patterns |
