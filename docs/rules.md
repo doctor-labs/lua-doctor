@@ -190,7 +190,7 @@ statement about its data, not about its code.
 
 Names and library use, judged the way luacheck and selene judge them. Off by
 default, because a firmware tree reports them by the thousand: they run under
-`--category lint` or an `--enable 95` pattern (also `--only`). Ranges 950-992 and 997-1002.
+`--category lint` or an `--enable 95` pattern (also `--only`). Ranges 950-992 and 997-1003.
 
 | Code | Severity | CWE | Meaning |
 | --- | --- | --- | --- |
@@ -242,6 +242,7 @@ default, because a firmware tree reports them by the thousand: they run under
 | 1000 | low | CWE-0 | shadowing an upvalue in a nested scope (luacheck 431) |
 | 1001 | low | CWE-0 | shadowing an upvalue argument in a nested scope (luacheck 432) |
 | 1002 | low | CWE-0 | shadowing an upvalue loop variable in a nested scope (luacheck 433) |
+| 1003 | low | CWE-0 | invalid string escape: an unknown escape such as "\q" in a string (selene bad_string_escape) |
 
 ## 9xx - meta
 

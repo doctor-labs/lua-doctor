@@ -726,6 +726,29 @@ describe("981 unused module-level global (#337)", function()
    end)
 end)
 
+describe("1003 invalid string escape (selene bad_string_escape)", function()
+   local function found(code, source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == code then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("1003 an unknown escape in a string", function()
+      assert_equal(#found("1003", [[print("\q")]] .. "\n"), 1)
+      assert_equal(#found("1003", [[print('a\qb')]] .. "\n"), 1)
+      -- valid escapes, a comment and a long string are not reported
+      assert_equal(#found("1003", [[print("\n\t\"\\\65")]] .. "\n"), 0)
+      assert_equal(#found("1003", "-- \\q in a comment\nprint(1)\n"), 0)
+      assert_equal(#found("1003", "local s = [[\\q]]\nprint(s)\n"), 0)
+   end)
+
+   it("stays off by default", function()
+      assert_equal(#found("1003", [[print("\q")]] .. "\n", {}), 0)
+   end)
+end)
+
 describe("955 accessing uninitialized local variable (#343)", function()
    local function found(code, source, opts)
       local out = {}
