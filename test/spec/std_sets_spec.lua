@@ -48,6 +48,10 @@ describe("the roblox std set (#356)", function()
       assert_equal(undefined_of("local p = Vector3.new(1, 2, 3)\ntask.wait(Instance.new('Part'))\n", "+roblox"), "")
    end)
 
+   it("defines the engine singletons game, workspace, script and plugin", function()
+      assert_equal(undefined_of("print(game, workspace, script, plugin)\n", "+roblox"), "")
+   end)
+
    it("keeps the default globals defined", function()
       assert_equal(undefined_of("print(task)\n", "+roblox"), "")
    end)

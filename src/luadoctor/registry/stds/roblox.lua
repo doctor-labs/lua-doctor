@@ -1,11 +1,15 @@
 -- Roblox (Luau) engine globals: the top-level functions and the classes and
 -- libraries that selene's roblox_base std declares (selene-lib/default_std/roblox_base.yml,
 -- MIT). Classes and libraries accept any field; their members are not listed here.
--- ponytail: game, workspace, script and plugin come from the generated API dump, not this
--- list, so they stay undefined until added. Add them when a fixture needs them.
+-- The four engine singletons (game, workspace, script, plugin) come from the generated API dump
+-- in selene, so they are listed by hand below.
 return {
    name = "roblox",
    globals = {read_globals = {
+      "game",
+      "workspace",
+      "script",
+      "plugin",
       "DebuggerManager",
       "UserSettings",
       "delay",
