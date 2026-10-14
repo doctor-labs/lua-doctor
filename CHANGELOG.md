@@ -19,6 +19,7 @@ All notable changes to this project are documented here. The format follows
 - Opt-in lint 1003: an invalid string escape such as `"\q"`, selene bad_string_escape (#372). Lua 5.1 drops the backslash and Lua 5.2+ rejects it; the parse retry that already accepts these escapes now records where they are. Lint codes past 999 are four digits, so the code registry accepts them.
 - `--cache <file>` (#386): per-file results cache. A file's findings are reused when its content digest and the run's options match the saved entry; the rest are analyzed as before. Per-file only: `--whole-program` is never served from the cache. New `src/luadoctor/engine/results_cache.lua`.
 - `lua-doctor lsp`: a minimal Language Server Protocol server on stdio (Content-Length framing, JSON-RPC 2.0). Full-text sync; each didOpen, didChange and didSave publishes the per-file findings as `textDocument/publishDiagnostics` (source `lua-doctor`), and didClose clears them. Shutdown and exit are supported (#388).
+- `--watch` (#389): rescans the Lua files under the given paths every second and reports only the ones whose mtime or size changed. Stdlib only: `stat` is polled, no inotify binding. Cannot be combined with `--staged` or `--scope changed`.
 - Per-file config overrides: `files = {["glob"] = {disable = ..., severity = ...}}` in `lua-doctor.config.lua` (#385).
 - Opt-in lint 981: a module-level global assigned but never read in the file, luacheck 131 (#337).
 - Opt-in lint 980: unreachable code after a terminating statement (luacheck 511) (#346).
