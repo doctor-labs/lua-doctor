@@ -5,6 +5,7 @@ local describe, it = harness.describe, harness.it
 local assert_equal, assert_true, assert_match = harness.assert_equal, harness.assert_true, harness.assert_match
 
 local api = require "luadoctor.api"
+local json = require "luadoctor.util.json"
 local profiles = require "luadoctor.registry.profiles"
 
 local RULES = "test/fixtures/declared_rules/acme.json"
@@ -45,5 +46,28 @@ describe("--rules JSON declaration", function()
       local declaration, err = profiles.load_file("test/fixtures/declared_rules/broken.json")
       assert_true(declaration == nil, "a broken JSON --rules file must not load")
       assert_match(tostring(err), "broken.json")
+   end)
+
+   it("refuses JSON nested past the depth cap instead of recursing without bound", function()
+      local dir = harness.scratch_dir("spec_rules_deep")
+      local f = assert(io.open(dir .. "/deep.json", "w"))
+      f:write(string.rep("[", 10000))
+      f:close()
+      local out, code = harness.cli({"--rules", dir .. "/deep.json",
+         "test/fixtures/declared_rules/handler.lua"})
+      os.execute("rm -rf " .. string.format("%q", dir))
+      assert_equal(code, 2, out)
+      assert_match(out, "nested deeper than 64", out)
+   end)
+
+   it("refuses JSON input over 1 MiB with a message", function()
+      local value, err = json.decode(string.rep(" ", 1024 * 1024 + 1))
+      assert_true(value == nil, "oversize input must not decode")
+      assert_match(tostring(err), "larger than", tostring(err))
+   end)
+
+   it("still decodes nesting at the depth cap", function()
+      local value = json.decode(string.rep("[", 64) .. string.rep("]", 64))
+      assert_true(value ~= nil, "nesting of exactly 64 is allowed")
    end)
 end)

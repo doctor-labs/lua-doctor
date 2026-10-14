@@ -1,13 +1,19 @@
 -- Minimal JSON decoder for --rules declarations. Data only: nothing runs.
 -- json.decode(text) returns the decoded value, or nil plus a message with the
 -- byte offset. null is dropped from objects and rejected inside lists.
+-- Input over 1 MiB, or nesting deeper than 64, is refused.
 local json = {}
 
 local NULL = {}
+local MAX_DEPTH = 64
+local MAX_BYTES = 1024 * 1024
 local ESCAPES = {['"'] = '"', ["\\"] = "\\", ["/"] = "/",
    b = "\b", f = "\f", n = "\n", r = "\r", t = "\t"}
 
 function json.decode(text)
+   if #text > MAX_BYTES then
+      return nil, ("input is larger than %d bytes"):format(MAX_BYTES)
+   end
    local pos = 1
    local function fail(message)
       error({json_error = ("%s at byte %d"):format(message, pos)}, 0)
@@ -47,13 +53,14 @@ function json.decode(text)
       end
    end
 
-   local function parse_list()
+   local function parse_list(depth)
+      if depth > MAX_DEPTH then fail("nested deeper than " .. MAX_DEPTH) end
       pos = pos + 1
       local list = {}
       skip()
       if text:sub(pos, pos) == "]" then pos = pos + 1; return list end
       while true do
-         local item = value()
+         local item = value(depth)
          if item == NULL then fail("null is not allowed in a list") end
          list[#list + 1] = item
          skip()
@@ -64,7 +71,8 @@ function json.decode(text)
       end
    end
 
-   local function parse_object()
+   local function parse_object(depth)
+      if depth > MAX_DEPTH then fail("nested deeper than " .. MAX_DEPTH) end
       pos = pos + 1
       local object = {}
       skip()
@@ -76,7 +84,7 @@ function json.decode(text)
          skip()
          if text:sub(pos, pos) ~= ":" then fail("expected ':'") end
          pos = pos + 1
-         local item = value()
+         local item = value(depth)
          if item ~= NULL then object[key] = item end
          skip()
          local c = text:sub(pos, pos)
@@ -86,11 +94,11 @@ function json.decode(text)
       end
    end
 
-   value = function()
+   value = function(depth)
       skip()
       local c = text:sub(pos, pos)
-      if c == "{" then return parse_object() end
-      if c == "[" then return parse_list() end
+      if c == "{" then return parse_object(depth + 1) end
+      if c == "[" then return parse_list(depth + 1) end
       if c == '"' then return parse_string() end
       if text:sub(pos, pos + 3) == "true" then pos = pos + 4; return true end
       if text:sub(pos, pos + 4) == "false" then pos = pos + 5; return false end
@@ -105,7 +113,7 @@ function json.decode(text)
    end
 
    local ok, result = pcall(function()
-      local decoded = value()
+      local decoded = value(0)
       skip()
       if pos <= #text then fail("trailing data") end
       if decoded == NULL then return nil end
