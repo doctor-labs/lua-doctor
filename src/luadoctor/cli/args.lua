@@ -14,6 +14,7 @@ local FLAGS_WITH_VALUE = {
    ["--output"] = "output",
    ["-o"] = "output",
    ["--jobs"] = "jobs",
+   ["--cache"] = "cache",
    ["--max-nodes"] = "max_nodes",
    ["--validate-timeout"] = "validate_timeout",
    ["--view"] = "view",
@@ -215,6 +216,9 @@ analysis:
   --validate-timeout <ms>    wall clock for one validated payload (default 2000)
   --jobs <n>                 analyze files in n worker processes (--whole-program
                              runs in one process)
+  --cache <file>             reuse the findings of files whose content and options
+                             are unchanged since the run that wrote <file> (per-file,
+                             not with --whole-program)
 
 validator exit codes: 0 benign, 1 rce, escape, partial or timeout, 2 the payload or
 the sandbox itself failed.

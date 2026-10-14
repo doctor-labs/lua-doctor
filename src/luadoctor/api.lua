@@ -20,6 +20,7 @@ local render = require "luadoctor.report.render"
 local report_contract = require "luadoctor.report.findings"
 local pipeline = require "luadoctor.engine.pipeline"
 local jobs = require "luadoctor.engine.jobs"
+local results_cache = require "luadoctor.engine.results_cache"
 
 -- A progress hook must never be able to change an analysis, so a callback that
 -- raises is ignored.
@@ -385,6 +386,64 @@ local function analyze_files(paths, opts)
    return pipeline.sort_findings(findings), writes
 end
 
+-- `--cache`: files whose digest and option key match the saved entry are served
+-- from it; the rest go through the same per-file analysis as an uncached run.
+-- Cross-file results depend on the other files, so --whole-program is not cached.
+local function analyze_cached(paths, opts)
+   local key = results_cache.key(opts)
+   local saved = results_cache.load(opts.cache, key)
+   local digests, served, fresh = {}, {}, {}
+   for _, path in ipairs(paths) do
+      local handle = io.open(path, "rb")
+      local digest
+      if handle then
+         digest = results_cache.digest(handle:read("*a") or "")
+         handle:close()
+      end
+      digests[path] = digest
+      local entry = digest and saved[path]
+      if entry and entry.digest == digest then
+         served[#served + 1] = entry
+      else
+         fresh[#fresh + 1] = path
+      end
+   end
+
+   local analyzed, analyzed_writes
+   local workers = jobs.count(opts, #fresh)
+   if workers > 1 then
+      analyzed, analyzed_writes = jobs.run(fresh, opts, workers, api.analyze_unpaired,
+         function(...) notify(opts.on_file, ...) end)
+   else
+      analyzed, analyzed_writes = analyze_files(fresh, opts)
+   end
+
+   local by_file = {}
+   for _, path in ipairs(fresh) do by_file[path] = {findings = {}, writes = {}} end
+   for _, finding in ipairs(analyzed) do
+      table.insert(by_file[finding.file].findings, finding)
+   end
+   for _, write in ipairs(analyzed_writes) do
+      table.insert(by_file[write.file].writes, write)
+   end
+
+   local files, findings, writes = {}, {}, {}
+   for _, entry in ipairs(served) do
+      for _, finding in ipairs(entry.findings) do findings[#findings + 1] = finding end
+      for _, write in ipairs(entry.writes) do writes[#writes + 1] = write end
+   end
+   for _, finding in ipairs(analyzed) do findings[#findings + 1] = finding end
+   for _, write in ipairs(analyzed_writes) do writes[#writes + 1] = write end
+   for _, path in ipairs(paths) do
+      if digests[path] then
+         local entry = by_file[path] or saved[path]
+         files[path] = {digest = digests[path], findings = entry.findings, writes = entry.writes}
+      end
+   end
+   results_cache.store(opts.cache, key, files)
+   return pipeline.sort_findings(pipeline.pair_store_hops(findings, writes))
+end
+
 --- Analyze files. `paths` is an array of file paths.
 --
 -- With `opts.whole_program`, the files are also analyzed as one program: calls
@@ -393,6 +452,9 @@ end
 function api.analyze(paths, opts)
    opts = checked_options(opts)
    paths = checked_paths(paths)
+   if opts.cache and not opts.whole_program then
+      return analyze_cached(paths, opts)
+   end
    -- `--jobs N` splits a per-file scan over N worker processes.
    local workers = jobs.count(opts, #paths)
    if workers > 1 then
