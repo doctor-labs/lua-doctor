@@ -49,7 +49,9 @@
 --        is called with a comparison expression (e.g. type(x == "s")) as its argument
 --        instead of comparing type(x) to a string literal
 --
--- Opt-in: see rules/lint_gate.lua. Code range 950-979.
+--   981  module-level global assigned but never read (luacheck 131)
+--
+-- Opt-in: see rules/lint_gate.lua. Code range 950-981.
 local M = {}
 
 local detect_globals = require "luacheck.stages.detect_globals"
@@ -1117,6 +1119,91 @@ local function detect_type_check_inside_call(ctx)
 end
 
 detectors[#detectors + 1] = detect_type_check_inside_call
+
+-- ---------------------------------------------------------------- 981
+
+-- luacheck 131. A module-level global that is assigned but never read in the file.
+-- `function name() end` desugars to a Set of global `name`; `name = value` is a
+-- Set whose lhs target is an Id with no `.var` (resolved by resolve_locals, which
+-- stamps `.var` on locals only).
+--
+-- A read of a global name is an Id with no `.var` used as a value, including the
+-- object of an Index (`name.x` reads global `name`), and a `_G.NAME` access,
+-- which reads `NAME` through the global table.
+--
+-- Only top-level chunk statements are considered for assignment: a global set
+-- inside a function body is not module-level and is not reported here.
+local function detect_unused_global(ctx)
+   if not lint_gate.wanted(ctx.opts, "981") then return end
+
+   -- (a) every global name assigned at module level, with its assignment node.
+   -- The AST Set node is {tag="Set", [1]=lhs_list, [2]=rhs_list}.
+   local assigned = {}
+   for _, stmt in ipairs(ctx.chstate.ast) do
+      if stmt.tag == "Set" and stmt[1] then
+         for _, target in ipairs(stmt[1]) do
+            if target.tag == "Id" and not target.var then
+               assigned[target[1]] = stmt
+            end
+         end
+      end
+   end
+
+   -- (b) every global name read anywhere: a bare global Id, the object of an
+   -- Index, or a _G.NAME key (which reads NAME through the global table).
+   -- A Set/Local/Localrec lhs target is a store, not a read, so its Ids are
+   -- skipped during the walk.
+   local read = {}
+   local skip_lhs = {}
+   local function index_lhs(node, depth)
+      if depth > 200 or type(node) ~= "table" then return end
+      if (node.tag == "Set" or node.tag == "Local" or node.tag == "Localrec")
+            and node[1] then
+         for _, target in ipairs(node[1]) do
+            if type(target) == "table" then skip_lhs[target] = true end
+         end
+      end
+      for index = 1, #node do
+         local child = node[index]
+         if type(child) == "table" and child.tag then
+            index_lhs(child, depth + 1)
+         end
+      end
+   end
+   index_lhs(ctx.chstate.ast, 0)
+
+   local function walk_reads(node, depth)
+      if depth > 200 or type(node) ~= "table" then return end
+      if not skip_lhs[node] then
+         if node.tag == "Id" and not node.var then
+            read[node[1]] = true
+         elseif node.tag == "Index" then
+            local obj = node[1]
+            if obj and obj.tag == "Id" and not obj.var then
+               read[obj[1]] = true
+               if obj[1] == "_G" and node[2] and node[2].tag == "String" then
+                  read[node[2][1]] = true
+               end
+            end
+         end
+      end
+      for index = 1, #node do
+         local child = node[index]
+         if type(child) == "table" and child.tag then
+            walk_reads(child, depth + 1)
+         end
+      end
+   end
+   walk_reads(ctx.chstate.ast, 0)
+
+   for name, stmt in pairs(assigned) do
+      if not read[name] then
+         ctx:emit("981", stmt, {name = name})
+      end
+   end
+end
+
+detectors[#detectors + 1] = detect_unused_global
 
 --- The detectors this module contributes, in run order.
 function M.detectors()

@@ -385,4 +385,9 @@ register {code = "978", severity = "low", cwe = "CWE-0", confidence = "high",
 register {code = "979", severity = "low", cwe = "CWE-0", confidence = "high",
    message = "comparison passed to type(): did you mean type(x) == \"...\"?"}
 
+-- luacheck 131. A module-level global that is assigned but never read in the file:
+-- `function unused_helper() ... end` or `global_name = ...` with no use of the name.
+register {code = "981", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "global {name} is assigned but never used"}
+
 return codes
