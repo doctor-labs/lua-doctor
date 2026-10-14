@@ -10,6 +10,7 @@
 -- `lua-doctor --std +openwrt+luci` composes profiles. `--rules file.lua` loads the
 -- same shape from anywhere, which is how a vendor documents their own API.
 local util = require "luadoctor.util.util"
+local json = require "luadoctor.util.json"
 local builtin_standards = require "luacheck.builtin_standards"
 
 local profiles = {}
@@ -217,8 +218,21 @@ function profiles.known_names()
    return names
 end
 
+--- Validate a loaded declaration; returns it, or nil plus a message.
+local function check_declaration(path, declaration)
+   local valid, problem = pcall(validate, path, declaration)
+   if not valid then
+      -- assert() prefixes its message with the source location. The operator
+      -- wrote the profile, not the validator, so the location is noise.
+      local message = tostring(problem):gsub("^[^:]*:%d+: ", "")
+      return nil, ("profile %s is not valid: %s"):format(path, message)
+   end
+   return problem
+end
+
 --- Load a profile from a Lua file returning a declaration table.
 function profiles.load_file(path)
+   if path:match("%.json$") then return profiles.load_json_file(path) end
    -- lua-doctor: ignore 704  the profile path comes from the operator's --rules flag, not from request data
    local chunk, load_error = loadfile(path)
    if not chunk then
@@ -236,14 +250,23 @@ function profiles.load_file(path)
    -- this tool defines as "findings". A CI reading that as findings shows a
    -- config error as a report; a missing file correctly exits 2, and a
    -- malformed one must not exit 1.
-   local valid, problem = pcall(validate, path, declaration)
-   if not valid then
-      -- assert() prefixes its message with the source location. The operator
-      -- wrote the profile, not the validator, so the location is noise.
-      local message = tostring(problem):gsub("^[^:]*:%d+: ", "")
-      return nil, ("profile %s is not valid: %s"):format(path, message)
+   return check_declaration(path, declaration)
+end
+
+--- Load a profile from a JSON file (`.json`): the same shape as the Lua form,
+-- as data. Nothing in the file runs.
+function profiles.load_json_file(path)
+   local file, open_error = io.open(path, "rb")
+   if not file then
+      return nil, ("cannot load profile %s: %s"):format(path, tostring(open_error))
    end
-   return problem
+   local text = file:read("a")
+   file:close()
+   local declaration, decode_error = json.decode(text)
+   if declaration == nil then
+      return nil, ("profile %s is not valid JSON: %s"):format(path, tostring(decode_error))
+   end
+   return check_declaration(path, declaration)
 end
 
 --- Split a --std value into profile names. A leading "+" or an empty first part

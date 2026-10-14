@@ -176,9 +176,10 @@ selection:
   --enable <patterns>        force matching codes on
   --category <names>         only these families: exec, firmware, payload, artifact, meta
   --rules <file>             load extra sink/source declarations. The file is a
-                            Lua module returning a table, same shape as a
-                            profile; a missing or unparseable one is an error,
-                            never a silently narrower report. Repeatable.
+                            Lua module returning a table, or a .json file with the
+                            same shape as data (nothing runs); a missing or
+                            unparseable one is an error, never a silently narrower
+                            report. Repeatable.
   --severity-threshold <s>   lowest severity to report: low, medium, high, critical
                             (a file that could not be analyzed is always reported)
   --min-confidence <c>       lowest confidence to report: certain, high, medium, low
