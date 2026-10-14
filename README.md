@@ -367,7 +367,7 @@ sensitive reaching definitions. On top of that `lua-doctor` adds taint tracking
 with a stable code, severity, confidence, CWE and a source-to-sink trace, and
 plain, JSON, SARIF and HTML reports.
 
-90 registered rule codes, in five categories plus the opt-in `lint` (from `bin/lua-doctor rules list`):
+91 registered rule codes, in five categories plus the opt-in `lint` (from `bin/lua-doctor rules list`):
 
 ```sh
 bin/lua-doctor rules list | head -5
@@ -658,7 +658,7 @@ executed the analyzer over the corpus.
 | --- | --- |
 | [docs/architecture.md](docs/architecture.md) | how the pipeline is layered and why |
 | [docs/usage.md](docs/usage.md) | quick-start scan, --std profiles, output formats, CI, --validate |
-| [docs/rules.md](docs/rules.md) | all 37 codes, severity, CWE |
+| [docs/rules.md](docs/rules.md) | all 91 codes, severity, CWE |
 | [docs/precision.md](docs/precision.md) | the measurement, and what it does not cover |
 | [docs/firmware-stds.md](docs/firmware-stds.md) | what each platform profile declares |
 | [docs/sarif.md](docs/sarif.md) | the report contract |

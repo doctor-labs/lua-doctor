@@ -60,6 +60,9 @@ local store_reads = {}
 -- confidence step lower and named, rather than at full confidence.
 local validators = {}
 
+-- Declared pattern rules (`pattern_rules` in a profile), matched by rules.patterns.
+local pattern_rules = {}
+
 -- Globals whose read is itself untrusted input (CGILua `cgi`); merged in by
 -- registry/stds/*. Exact name match, never a local of the same name.
 local global_sources = {}
@@ -146,6 +149,7 @@ function platform_api.reset()
    for i = #store_writes, 0, -1 do store_writes[i] = nil end
    for i = #store_reads, 0, -1 do store_reads[i] = nil end
    for i = #validators, 0, -1 do validators[i] = nil end
+   for i = #pattern_rules, 0, -1 do pattern_rules[i] = nil end
    for kind, set in pairs(sanitizers) do
       for pattern in pairs(set) do set[pattern] = nil end
    end
@@ -173,6 +177,9 @@ function platform_api.apply_profile(declaration)
    end
    for _, entry in ipairs(declaration.validators or {}) do
       validators[#validators + 1] = entry
+   end
+   for _, rule in ipairs(declaration.pattern_rules or {}) do
+      pattern_rules[#pattern_rules + 1] = rule
    end
    for _, sink in ipairs(declaration.sinks or {}) do
       default_sinks[#default_sinks + 1] = sink
@@ -228,6 +235,7 @@ function platform_api.platform_sources() return platform_sources end
 function platform_api.global_source_entries() return global_sources end
 function platform_api.std_globals() return std_globals end
 function platform_api.sinks() return default_sinks end
+function platform_api.pattern_rules() return pattern_rules end
 function platform_api.shapes() return default_shapes end
 
 function platform_api.propagators() return default_propagators end

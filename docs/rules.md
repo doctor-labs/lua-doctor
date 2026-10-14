@@ -143,6 +143,12 @@ with a shipped value, because that is the canonical CWE-798: the boundary is
 between embedding a credential and checking one, not between two ways of
 embedding it.
 
+## 7xx - declared pattern rules
+
+| Code | Severity | CWE | Meaning |
+| --- | --- | --- | --- |
+| 742 | medium | set by the rule | matches a declared pattern rule |
+
 ## 8xx - artifact and bytecode
 
 | Code | Severity | CWE | Meaning |
