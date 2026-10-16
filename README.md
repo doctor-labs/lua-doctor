@@ -367,7 +367,7 @@ sensitive reaching definitions. On top of that `lua-doctor` adds taint tracking
 with a stable code, severity, confidence, CWE and a source-to-sink trace, and
 plain, JSON, SARIF and HTML reports.
 
-92 registered rule codes, in five categories plus the opt-in `lint` (from `bin/lua-doctor rules list`):
+93 registered rule codes, in five categories plus the opt-in `lint` (from `bin/lua-doctor rules list`):
 
 ```sh
 bin/lua-doctor rules list | head -5
@@ -388,7 +388,7 @@ bin/lua-doctor rules list | head -5
 | `payload` | payload and backdoor patterns | 741–750 |
 | `artifact` | artifact and bytecode triage | 801–805 |
 | `meta` | parse, dialect and coverage-gap codes | 012, 901–904 |
-| `lint` | opt-in (`--category lint`): undefined names and standard-library misuse, the way luacheck and selene judge them | 951–954, 957–992, 997–1003 |
+| `lint` | opt-in (`--category lint`): undefined names and standard-library misuse, the way luacheck and selene judge them | 951–954, 957–992, 997–1004 |
 
 Every code has a doc page with a firing example, how to fix it, and a fix
 prompt: [docs/rules.md](docs/rules.md) lists them all, and
@@ -658,7 +658,7 @@ executed the analyzer over the corpus.
 | --- | --- |
 | [docs/architecture.md](docs/architecture.md) | how the pipeline is layered and why |
 | [docs/usage.md](docs/usage.md) | quick-start scan, --std profiles, output formats, CI, --validate |
-| [docs/rules.md](docs/rules.md) | all 92 codes, severity, CWE |
+| [docs/rules.md](docs/rules.md) | all 93 codes, severity, CWE |
 | [docs/precision.md](docs/precision.md) | the measurement, and what it does not cover |
 | [docs/firmware-stds.md](docs/firmware-stds.md) | what each platform profile declares |
 | [docs/sarif.md](docs/sarif.md) | the report contract |
