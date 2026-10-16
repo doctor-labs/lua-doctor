@@ -100,6 +100,7 @@ build = {
       ["luadoctor.rules.registry"] = "src/luadoctor/rules/registry.lua",
       ["luadoctor.rules.secrets"] = "src/luadoctor/rules/secrets.lua",
       ["luadoctor.util.const_eval"] = "src/luadoctor/util/const_eval.lua",
+      ["luadoctor.util.json"] = "src/luadoctor/util/json.lua",
       ["luadoctor.util.uci_cursor"] = "src/luadoctor/util/uci_cursor.lua",
       ["luadoctor.util.util"] = "src/luadoctor/util/util.lua",
       ["luadoctor.validate.child"] = "src/luadoctor/validate/child.lua",

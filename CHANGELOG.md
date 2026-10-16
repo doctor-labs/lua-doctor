@@ -10,6 +10,7 @@ All notable changes to this project are documented here. The format follows
 - 012 also reports a malformed `-- luacheck:` inline option (luacheck 021-023: unknown option, bad argument, unpaired push or pop) as a low, certain finding, so it is no longer silent (#339). The message names the luacheck directive; 012 keeps lua-doctor's own meaning for `-- lua-doctor:` directives.
 - `--whole-program` follows taint through a `require(...)` written inline inside an expression (`os.execute(require("lib").echo(x))`), not only through a module bound to a variable first (#329). The whole-program fixpoint default is raised from 8 to 16 rounds, so a chain of more than eight modules is no longer cut short; the bound is still reported when hit (#329).
 - `--std` sets `busted`, `love`, `rockspec` and `roblox` (#356): each adds its globals to the defaults, so `--std +busted+love` combines them. The first three were luacheck Lua standards that replaced the default set instead of adding to it, and only one could be named at a time. New `src/luadoctor/registry/stds/{busted,love,rockspec,roblox}.lua`, `test/spec/std_sets_spec.lua`.
+- `--rules` accepts a `.json` declaration with the same shape as a Lua profile, read as data without running code (#332).
 - Per-file config overrides: `files = {["glob"] = {disable = ..., severity = ...}}` in `lua-doctor.config.lua` (#385).
 - Opt-in lint 981: a module-level global assigned but never read in the file, luacheck 131 (#337).
 - Opt-in lint 980: unreachable code after a terminating statement (luacheck 511) (#346).

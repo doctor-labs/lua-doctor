@@ -889,7 +889,9 @@ Pass `--force` to replace an existing workflow.
 ## Custom rules
 
 `--rules <file>` loads an extra Lua module that returns a table in the same
-shape as a `--std` profile. A profile declares five fields (all optional):
+shape as a `--std` profile. A `.json` file with the same shape is also accepted
+(`{"name": "acme", "sinks": [{"pattern": "acme.run", "code": "701", "arg": [1]}]}`);
+it is read as data and nothing in it runs. A profile declares five fields (all optional):
 
 | Field | What it is |
 | --- | --- |

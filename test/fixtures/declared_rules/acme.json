@@ -1,0 +1,10 @@
+{
+  "name": "acme",
+  "sources": [
+    {"pattern": "acme.read_param", "id": "acme.read_param", "name": "acme request parameter", "confidence": "high"}
+  ],
+  "sinks": [
+    {"pattern": "acme.run", "code": "701", "kind": "exec", "arg": [1]}
+  ],
+  "sanitizers": {"shell": [], "dyncode": [], "path": []}
+}
