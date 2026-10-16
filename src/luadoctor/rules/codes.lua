@@ -413,6 +413,11 @@ register {code = "980", severity = "low", cwe = "CWE-0", confidence = "high",
 register {code = "981", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "global {name} is assigned but never used"}
 
+-- selene bad_string_escape. An unknown escape in a string (`"\q"`): Lua 5.1 drops
+-- the backslash and Lua 5.2 and later reject it.
+register {code = "1003", severity = "low", cwe = "CWE-0", confidence = "high",
+   message = "invalid string escape {name}: Lua 5.1 drops the backslash, Lua 5.2+ rejects it"}
+
 -- luacheck 211. A local (including a local function) bound but never read in
 -- its scope. A call to a local function counts as a read; reading through
 -- `_G` counts as a read. Opt-in.

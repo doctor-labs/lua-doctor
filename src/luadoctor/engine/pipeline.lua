@@ -143,10 +143,11 @@ local function analyze_source(source, opts, path)
    if not chstate and type(source) == "string" and syntax_error
          and type(syntax_error.msg) == "string"
          and syntax_error.msg:find("invalid escape sequence", 1, true) then
-      local normalised = escapes.normalise(source)
+      local normalised, bad_escapes = escapes.scan(source)
       if normalised ~= source then
          local retried = parse_context.build(normalised, {max_nodes = opts.max_nodes})
          if retried then
+            retried.bad_escapes = bad_escapes
             chstate, syntax_error = retried, nil
             source = normalised
          end

@@ -57,11 +57,28 @@ local function open_level(source, i, n)
    return nil
 end
 
-function escapes.normalise(source)
+-- Returns the normalised source and, for each unknown escape found, its
+-- {line, column, text} in the ORIGINAL source (text is the backslash and the
+-- escaped byte). Positions are the same in both, so they are reported as is.
+function escapes.scan(source)
    local n = #source
    local i = 1
    local last = 1
    local parts = nil
+   local bad = {}
+   -- Line/column of a byte position, moving forward only (positions ascend).
+   local cur, line, line_start = 1, 1, 1
+   local function locate(pos)
+      local nl = source:find("\n", cur, true)
+      while nl and nl < pos do
+         line = line + 1
+         line_start = nl + 1
+         cur = nl + 1
+         nl = source:find("\n", cur, true)
+      end
+      cur = pos
+      return line, pos - line_start + 1
+   end
    while i <= n do
       local byte = source:byte(i)
       if byte == 45 and source:byte(i + 1) == 45 then
@@ -86,12 +103,15 @@ function escapes.normalise(source)
                   break
                elseif is_newline_byte(e) or is_valid_start(e) then
                   i = i + 2
-               elseif e < 128 then
-                  parts = parts or {}
-                  parts[#parts + 1] = source:sub(last, i) .. "\\"
-                  last = i + 2
-                  i = i + 2
                else
+                  local line_no, column = locate(i)
+                  bad[#bad + 1] = {line = line_no, column = column,
+                     text = source:sub(i, i + 1)}
+                  if e < 128 then
+                     parts = parts or {}
+                     parts[#parts + 1] = source:sub(last, i) .. "\\"
+                     last = i + 2
+                  end
                   i = i + 2
                end
             elseif is_newline_byte(c) then
@@ -111,9 +131,13 @@ function escapes.normalise(source)
          i = i + 1
       end
    end
-   if not parts then return source end
+   if not parts then return source, bad end
    parts[#parts + 1] = source:sub(last)
-   return table.concat(parts)
+   return table.concat(parts), bad
+end
+
+function escapes.normalise(source)
+   return (escapes.scan(source))
 end
 
 return escapes

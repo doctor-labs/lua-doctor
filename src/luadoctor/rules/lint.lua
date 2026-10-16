@@ -1342,6 +1342,27 @@ end
 
 detectors[#detectors + 1] = detect_unused_global
 
+-- ---------------------------------------------------------------- 1003
+
+-- selene bad_string_escape. An unknown escape in a string (`"\q"`): Lua 5.1 drops
+-- the backslash, Lua 5.2 and later reject it. The pipeline's parse retry records
+-- where they are in chstate.bad_escapes; this reports them.
+local function detect_bad_string_escape(ctx)
+   if not lint_gate.wanted(ctx.opts, "1003") then return end
+
+   for _, escape in ipairs(ctx.chstate.bad_escapes or {}) do
+      local offset = (ctx.chstate.line_offsets[escape.line] or 0) + escape.column - 1
+      ctx:emit("1003", {
+         tag = "Id",
+         line = escape.line,
+         offset = offset,
+         end_offset = offset + 1,
+      }, {name = escape.text})
+   end
+end
+
+detectors[#detectors + 1] = detect_bad_string_escape
+
 -- ---------------------------------------------------------------- 955, 956
 
 -- Detects uninitialized access (955) and mutation (956) of local variables.
