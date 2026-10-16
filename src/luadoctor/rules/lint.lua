@@ -192,7 +192,7 @@ detectors[#detectors + 1] = detect_names
 
 -- ---------------------------------------------------------------- 997-1002
 
--- REDEFINITION maps luacheck's redefinition/shadwing codes to the lua-doctor code
+-- SHADOWING maps luacheck's redefinition/shadwing codes to the lua-doctor code
 -- that reports them. luacheck's linearize stage emits both:
 --   411/412/413 — same-scope redefinition (411 local, 412 argument, 413 loop var)
 --   421/422/423 — nested-scope shadowing (421 local, 422 argument, 423 loop var)
@@ -203,7 +203,7 @@ detectors[#detectors + 1] = detect_names
 -- Only the 42x/43x shadowing codes are mapped here; the 41x codes are not handled
 -- by this tool (same-scope redefinition is already covered by luacheck and is not
 -- a lua-doctor finding).
-local REDEFINITION = {
+local SHADOWING = {
    ["421"] = "997",
    ["422"] = "998",
    ["423"] = "999",
@@ -219,7 +219,7 @@ local REDEFINITION = {
 -- enabled (opt-in via category "lint") and emit.
 local function detect_shadowing(ctx)
    local wanted = {}
-   for luacheck_code, target in pairs(REDEFINITION) do
+   for luacheck_code, target in pairs(SHADOWING) do
       if lint_gate.wanted(ctx.opts, target) then
          wanted[luacheck_code] = target
       end
