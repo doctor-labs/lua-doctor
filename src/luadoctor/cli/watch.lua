@@ -54,7 +54,12 @@ local function stat_format()
       local system = pipe and pipe:read("*l") or ""
       if pipe then pipe:close() end
       -- BSD stat (macOS) and GNU stat spell mtime, size and name differently.
-      stat_command = system == "Darwin" and "stat -f '%m %z %N'" or "stat -c '%Y %s %n'"
+      -- Pick between two literals so nothing read from the pipe reaches the later popen.
+      if system == "Darwin" then
+         stat_command = "stat -f '%m %z %N'"
+      else
+         stat_command = "stat -c '%Y %s %n'"
+      end
    end
    return stat_command
 end
@@ -69,6 +74,7 @@ local function system_mtimes(files)
       for i = first, math.min(first + STAT_BATCH - 1, #files) do
          batch[#batch + 1] = quote(files[i])
       end
+      -- lua-doctor: ignore 702  literal stat command; every path is quote()d into one shell word
       local pipe = io.popen(command .. " " .. table.concat(batch, " ") .. " 2>/dev/null")
       if pipe then
          for line in pipe:lines() do
