@@ -142,6 +142,7 @@ lua-doctor - RCE checker and security analyzer for Lua in embedded firmware
 
 usage: lua-doctor [options] <file|directory>...
        lua-doctor mcp
+       lua-doctor lsp
        lua-doctor rules [list | explain <code>]
        lua-doctor why <file>:<line> [options]
        lua-doctor fix [--agent claude|codex|cursor] [--safe] [--print] <path>...
@@ -229,6 +230,7 @@ other:
   -h, --help                 this message
   --version                  print version and exit
   mcp                        serve the scan tool over MCP (stdio)
+  lsp                        editor diagnostics over LSP (stdio), on open, change and save
   rules list | explain <code>  the rule catalogue, and one code's doc page
   rules set|enable|disable <code>  tune what this project reports (edits lua-doctor.config.lua)
   why <file>:<line>          explain the findings on one line and how to fix them

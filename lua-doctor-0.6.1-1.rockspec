@@ -35,6 +35,7 @@ build = {
        ["luadoctor.cli.handoff"] = "src/luadoctor/cli/handoff.lua",
       ["luadoctor.cli.install_cmd"] = "src/luadoctor/cli/install_cmd.lua",
       ["luadoctor.cli.mcp_cmd"] = "src/luadoctor/cli/mcp_cmd.lua",
+      ["luadoctor.cli.lsp_cmd"] = "src/luadoctor/cli/lsp_cmd.lua",
       ["luadoctor.cli.menu"] = "src/luadoctor/cli/menu.lua",
        ["luadoctor.cli.progress"] = "src/luadoctor/cli/progress.lua",
        ["luadoctor.cli.nginxconf"] = "src/luadoctor/cli/nginxconf.lua",
