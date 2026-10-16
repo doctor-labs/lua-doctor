@@ -47,6 +47,7 @@ build = {
        ["luadoctor.cli.template"] = "src/luadoctor/cli/template.lua",
        ["luadoctor.cli.term"] = "src/luadoctor/cli/term.lua",
       ["luadoctor.cli.walk"] = "src/luadoctor/cli/walk.lua",
+      ["luadoctor.cli.watch"] = "src/luadoctor/cli/watch.lua",
       ["luadoctor.cli.why_cmd"] = "src/luadoctor/cli/why_cmd.lua",
       ["luadoctor.engine.callgraph"] = "src/luadoctor/engine/callgraph.lua",
       ["luadoctor.engine.fn_targets"] = "src/luadoctor/engine/fn_targets.lua",

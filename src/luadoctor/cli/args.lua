@@ -48,6 +48,7 @@ local BOOLEAN_FLAGS = {
    ["--include-untracked"] = "include_untracked",
    ["--interactive"] = "interactive",
    ["--no-interactive"] = "no_interactive",
+   ["--watch"] = "watch",
 }
 
 -- Options that take a list. They are accepted both as `--opt value` and
@@ -195,6 +196,7 @@ selection:
   --base <ref>               with --scope changed: the ref to compare with
   --include-untracked        with --scope changed: also scan new, untracked files
   --staged                   only files staged in git (for a pre-commit hook)
+  --watch                    rescan the changed Lua files every second until interrupted (Ctrl-C)
   --allow-defined            lint: a global the file assigns counts as defined where it is read
                              (selene's undefined_variable; luacheck's allow_defined)
   --restrict <module,...>     1005: report a constant require of each module here, and its submodules

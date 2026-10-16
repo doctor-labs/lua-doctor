@@ -19,6 +19,7 @@ local validate_report = require "luadoctor.validate.report"
 local version = require "luadoctor.version"
 local selection = require "luadoctor.cli.selection"
 local menu = require "luadoctor.cli.menu"
+local watch = require "luadoctor.cli.watch"
 
 -- 0 clean, 1 findings at or above the threshold, 2 error, and 3 for the one thing
 -- 1 cannot express: under --baseline, a finding that was not in the baseline. A
@@ -195,7 +196,7 @@ local function subcommand_root()
       or (arg and arg[0] or ""):match("^(.*)/src/luadoctor/main%.lua$") or "."
 end
 
-local function run(argv)
+local function run(argv, watched_files)
    local subcommand = SUBCOMMANDS[argv[1]]
    if subcommand then
       local root = subcommand_root()
@@ -224,6 +225,16 @@ local function run(argv)
    -- pre-commit hook is just `lua-doctor --staged`.
    if #opts.paths == 0 and (opts.staged or opts.scope == "changed") then
       opts.paths = {"."}
+   end
+
+   -- Watch mode rescans by calling run again with only the changed files, so the
+   -- inner call (watched_files set) does the work and never starts another loop.
+   if opts.watch and not watched_files then
+      if opts.staged or opts.scope == "changed" then
+         return fail("--watch cannot be combined with --staged or --scope changed")
+      end
+      if #opts.paths == 0 then opts.paths = {"."} end
+      return watch.loop(opts.paths, function(changed) run(argv, changed) end)
    end
 
    if #opts.paths == 0 and not opts.help and not opts.version then
@@ -291,7 +302,9 @@ local function run(argv)
    bar:phase("finding Lua files")
 
    local files, walk_errors
-   if opts.staged or opts.scope == "changed" then
+   if watched_files then
+      files = watched_files
+   elseif opts.staged or opts.scope == "changed" then
       local selected, scope_error = scope.files(opts)
       if not selected then return fail(scope_error) end
       if #selected == 0 then
@@ -387,7 +400,7 @@ local function run(argv)
    opts.exit_code = code
    local written = emit(list, opts.format or "plain", opts)
    if written then return written end
-   if menu.wanted(opts, list, opts.format or "plain") then
+   if not watched_files and menu.wanted(opts, list, opts.format or "plain") then
       menu.run(list, {opts = opts, argv = argv, root = subcommand_root(), out = io.stdout, err = io.stderr})
    end
 

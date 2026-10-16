@@ -697,6 +697,7 @@ The most used flags:
 | `--category <names>` | only these families: `exec`, `firmware`, `payload`, `artifact`, `meta` |
 | `--scope full\|changed`, `--base <ref>`, `--include-untracked` | scan only files changed since the base |
 | `--staged` | scan only files staged in git (for a pre-commit hook) |
+| `--watch` | rescan the changed Lua files every second until interrupted (Ctrl-C); the first pass covers every file |
 | `--std <names>` | platform API sets, `+` separated, e.g. `+openwrt+luci` |
 | `--only, --ignore <patterns>` | report only, or suppress, matching codes |
 | `--json` | the machine-readable `doctor/1` envelope (same as `--format json`) |
