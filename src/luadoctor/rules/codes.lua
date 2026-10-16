@@ -477,4 +477,31 @@ register {code = "1001", severity = "low", cwe = "CWE-0", confidence = "medium",
 register {code = "1002", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "shadowing upvalue loop variable {name} in a nested scope"}
 
+-- luacheck 311. A value assigned to a local is overwritten before it is ever
+-- read, so the first assignment can never take effect. Opt-in.
+register {code = "988", severity = "high", cwe = "CWE-0", confidence = "high",
+   message = "value assigned to {name} is overwritten before use"}
+
+-- luacheck 312. A value assigned to a function argument is overwritten before
+-- it is ever read. Opt-in.
+register {code = "989", severity = "high", cwe = "CWE-0", confidence = "high",
+   message = "value of argument {name} is overwritten before use"}
+
+-- luacheck 313. A value assigned to a loop variable is overwritten before it
+-- is ever read. Opt-in.
+register {code = "990", severity = "high", cwe = "CWE-0", confidence = "high",
+   message = "value of loop variable {name} is overwritten before use"}
+
+-- luacheck 314. A table field is assigned a value that is immediately
+-- overwritten by a second assignment to the same key, so the first is lost.
+-- Opt-in.
+register {code = "991", severity = "high", cwe = "CWE-0", confidence = "high",
+   message = "value assigned to table field {field} is overwritten before use",
+   fields = {"field"}}
+
+-- luacheck 231/331. A variable is assigned a value but is never accessed, or
+-- is mutated (reassigned) but never accessed. Opt-in.
+register {code = "992", severity = "high", cwe = "CWE-0", confidence = "high",
+   message = "value assigned to {name} is never accessed"}
+
 return codes

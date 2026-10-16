@@ -184,7 +184,7 @@ statement about its data, not about its code.
 
 Names and library use, judged the way luacheck and selene judge them. Off by
 default, because a firmware tree reports them by the thousand: they run under
-`--category lint` or an `--enable 95` pattern (also `--only`). Ranges 950-987 and 997-1002.
+`--category lint` or an `--enable 95` pattern (also `--only`). Ranges 950-992 and 997-1002.
 
 | Code | Severity | CWE | Meaning |
 | --- | --- | --- | --- |
@@ -223,6 +223,11 @@ default, because a firmware tree reports them by the thousand: they run under
 | 985 | low | CWE-0 | local redefined in the same scope: a local (including `local function`) bound a second time while the first binding is still in scope (luacheck 411) |
 | 986 | low | CWE-0 | argument redefined by a local in the same scope: a named function argument shadowed by a `local` of the same name in the function body (luacheck 412) |
 | 987 | low | CWE-0 | loop variable redefined by a local in the same scope: a loop variable shadowed by a `local` of the same name in the loop body (luacheck 413) |
+| 988 | high | CWE-0 | a value assigned to a local is overwritten before it is ever read (luacheck 311) |
+| 989 | high | CWE-0 | a value assigned to a function argument is overwritten before it is ever read (luacheck 312) |
+| 990 | high | CWE-0 | a value assigned to a loop variable is overwritten before it is ever read (luacheck 313) |
+| 991 | high | CWE-0 | a table field is assigned a value that is immediately overwritten (luacheck 314) |
+| 992 | high | CWE-0 | a variable is assigned and never accessed, or mutated but never accessed (luacheck 231, 331) |
 | 997 | low | CWE-0 | shadowing a local in a nested scope (luacheck 421) |
 | 998 | low | CWE-0 | shadowing an argument in a nested scope (luacheck 422) |
 | 999 | low | CWE-0 | shadowing a loop variable in a nested scope (luacheck 423) |

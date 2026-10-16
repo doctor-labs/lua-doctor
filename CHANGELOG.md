@@ -5,6 +5,7 @@ All notable changes to this project are documented here. The format follows
 
 ## Unreleased
 
+- Opt-in lints 988-992: value assigned to a local/argument/loop variable is overwritten before use (luacheck 311/312/313), a table field is overwritten before use (luacheck 314), and a variable is assigned and never accessed or mutated but never accessed (luacheck 231/331) (#342).
 - Per-file config overrides: `files = {["glob"] = {disable = ..., severity = ...}}` in `lua-doctor.config.lua` (#385).
 - Opt-in lint 981: a module-level global assigned but never read in the file, luacheck 131 (#337).
 - Opt-in lint 980: unreachable code after a terminating statement (luacheck 511) (#346).
