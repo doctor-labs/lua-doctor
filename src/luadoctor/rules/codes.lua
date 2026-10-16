@@ -413,6 +413,11 @@ register {code = "980", severity = "low", cwe = "CWE-0", confidence = "high",
 register {code = "981", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "global {name} is assigned but never used"}
 
+-- selene manual_table_clone: a copy loop into an empty table is table.clone.
+-- 1004: the next free code after 1003 (open PR #426 takes 1003), so codes are three or four digits.
+register {code = "1004", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "copy loop into an empty table: use table.clone(src) (Luau/Roblox)"}
+
 -- selene bad_string_escape. An unknown escape in a string (`"\q"`): Lua 5.1 drops
 -- the backslash and Lua 5.2 and later reject it.
 register {code = "1003", severity = "low", cwe = "CWE-0", confidence = "high",

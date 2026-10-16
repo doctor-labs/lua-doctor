@@ -63,6 +63,7 @@
 --        statement follows a return, break, goto, or an error()/os.exit() call
 --        in the same block, so it can never execute
 --   981  module-level global assigned but never read (luacheck 131)
+--   1004 copy loop into an empty table: a manual table.clone (selene manual_table_clone)
 --
 --   985  local redefined in the same scope        (luacheck 411): a local (including
 --        `local function`) bound a second time while the first binding is still in scope
@@ -71,7 +72,7 @@
 --   987  loop variable redefined by a local in the same scope  (luacheck 413): a
 --        loop variable shadowed by a `local` of the same name in the loop body
 --
--- Opt-in: see rules/lint_gate.lua. Code ranges 950-992 and 997-1002.
+-- Opt-in: see rules/lint_gate.lua. Code ranges 950-992 and 997-1004.
 local M = {}
 
 local detect_globals = require "luacheck.stages.detect_globals"
@@ -1341,6 +1342,65 @@ local function detect_unused_global(ctx)
 end
 
 detectors[#detectors + 1] = detect_unused_global
+
+-- ---------------------------------------------------------------- 1004
+
+-- `local out = {}` followed at once by `for k, v in pairs(src) do out[k] = v end`,
+-- where src is a local other than out and the loop body is that one assignment.
+-- selene manual_table_clone. ipairs is not matched: table.clone copies every
+-- key, ipairs only the array part. table.clone is Luau/Roblox, not Lua 5.x.
+local function is_empty_table_local(stmt)
+   return stmt.tag == "Local" and stmt[1] and #stmt[1] == 1 and stmt[1][1].tag == "Id"
+      and stmt[2] and #stmt[2] == 1 and stmt[2][1].tag == "Table" and #stmt[2][1] == 0
+end
+
+-- The source local of a copy loop into out_var, or nil.
+local function copy_loop_source(loop, out_var)
+   if loop.tag ~= "Forin" or type(loop[1]) ~= "table" or #loop[1] ~= 2 then return nil end
+   local key, value = loop[1][1], loop[1][2]
+   local explist, block = loop[2], loop[3]
+   if type(explist) ~= "table" or #explist ~= 1 or type(block) ~= "table" or #block ~= 1 then
+      return nil
+   end
+   local call = explist[1]
+   if call.tag ~= "Call" or #call ~= 2 then return nil end
+   local callee, src = call[1], call[2]
+   if callee.tag ~= "Id" or callee[1] ~= "pairs" or callee.var then return nil end
+   if src.tag ~= "Id" or not src.var or src.var == out_var then return nil end
+   local set = block[1]
+   if set.tag ~= "Set" or #set[1] ~= 1 or #set[2] ~= 1 then return nil end
+   local target, rhs = set[1][1], set[2][1]
+   if target.tag ~= "Index" or target[1].tag ~= "Id" or target[1].var ~= out_var then return nil end
+   if target[2].tag ~= "Id" or target[2].var ~= key.var then return nil end
+   if rhs.tag ~= "Id" or rhs.var ~= value.var then return nil end
+   return src
+end
+
+local function scan_block_for_clone(ctx, block)
+   for index = 1, #block - 1 do
+      local decl, loop = block[index], block[index + 1]
+      if type(decl) == "table" and type(loop) == "table" and is_empty_table_local(decl) then
+         local out_var = decl[1][1].var
+         if out_var and copy_loop_source(loop, out_var) then
+            ctx:emit("1004", loop)
+         end
+      end
+   end
+end
+
+local function detect_manual_table_clone(ctx)
+   if not lint_gate.wanted(ctx.opts, "1004") then return end
+
+   scan_block_for_clone(ctx, ctx.chstate.ast)
+   ctx:each_node(function(node)
+      for index = 1, #node do
+         local child = node[index]
+         if type(child) == "table" and not child.tag then scan_block_for_clone(ctx, child) end
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_manual_table_clone
 
 -- ---------------------------------------------------------------- 1003
 

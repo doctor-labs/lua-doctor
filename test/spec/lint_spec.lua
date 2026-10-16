@@ -726,6 +726,39 @@ describe("981 unused module-level global (#337)", function()
    end)
 end)
 
+describe("1004 manual table clone (#376)", function()
+   local function found(source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == "1004" then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("a copy loop into an empty local table, from a local source", function()
+      assert_equal(#found("local src = {1}\nlocal out = {}\nfor k, v in pairs(src) do out[k] = v end\n"), 1)
+   end)
+
+   it("does not report when the loop does more than copy, or the copy is changed", function()
+      assert_equal(#found("local src = {}\nlocal out = {}\nfor k, v in pairs(src) do out[k] = v; n = n + 1 end\n"), 0)
+      assert_equal(#found("local src = {}\nlocal out = {}\nfor k, v in pairs(src) do out[k] = v + 1 end\n"), 0)
+   end)
+
+   it("does not report when the output is not an empty table, or a statement sits between", function()
+      assert_equal(#found("local src = {}\nlocal out = {a = 1}\nfor k, v in pairs(src) do out[k] = v end\n"), 0)
+      assert_equal(#found("local src = {}\nlocal out = {}\nprint(out)\nfor k, v in pairs(src) do out[k] = v end\n"), 0)
+   end)
+
+   it("does not report a global source, or ipairs (only the array part is copied)", function()
+      assert_equal(#found("local out = {}\nfor k, v in pairs(src) do out[k] = v end\n"), 0)
+      assert_equal(#found("local src = {}\nlocal out = {}\nfor k, v in ipairs(src) do out[k] = v end\n"), 0)
+   end)
+
+   it("stays off by default", function()
+      assert_equal(#found("local src = {1}\nlocal out = {}\nfor k, v in pairs(src) do out[k] = v end\n", {}), 0)
+   end)
+end)
+
 describe("1003 invalid string escape (selene bad_string_escape)", function()
    local function found(code, source, opts)
       local out = {}
