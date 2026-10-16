@@ -48,10 +48,16 @@
 --   979  a comparison inside type()              (selene type_check_inside_call): type()
 --        is called with a comparison expression (e.g. type(x == "s")) as its argument
 --        instead of comparing type(x) to a string literal
+--   982  unused local                              (luacheck 211): a local or local
+--        function that is bound but never read in its scope
+--   983  unused function argument                  (luacheck 212): a named parameter
+--        that is never read (`...` and `self` are not flagged)
+--   984  unused loop variable                       (luacheck 213): a generic for key/value
+--        or a numeric for counter that is never read (`_` is not flagged)
 --
 --   981  module-level global assigned but never read (luacheck 131)
 --
--- Opt-in: see rules/lint_gate.lua. Code range 950-981.
+-- Opt-in: see rules/lint_gate.lua. Code range 950-984.
 local M = {}
 
 local detect_globals = require "luacheck.stages.detect_globals"
@@ -1204,6 +1210,84 @@ local function detect_unused_global(ctx)
 end
 
 detectors[#detectors + 1] = detect_unused_global
+
+-- ---------------------------------------------------------------- 982, 983, 984
+
+-- luacheck 211/212/213, mapped to lua-doctor codes 982/983/984.
+--
+-- `resolve_locals` (run in parse_context) gives flow-sensitive reaching
+-- definitions: each `var` object on an Id node carries `var.accessed`, set by
+-- linearize for every resolved read, and `var.values[*].used`, set by
+-- resolve_locals when a reaching definition was actually consumed. For these
+-- three lints the relevant fact is simply "was this name ever read at all":
+-- `var.accessed` already answers that, flow-insensitively, and is cheaper than
+-- walking the RDefs table luacheck populated for the taint pass.
+--
+-- A `var` is one of:
+--   "var"   - a local (declared with `local` or `local function`)
+--   "arg"   - a named function parameter
+--   "loop"  - a generic-for loop variable (for k, v in ...)
+--   "loopi" - a numeric-for counter (for i = a, b do)
+-- The var's `node` is the declaration Id; `var.accessed` is true when any Id
+-- referencing it was scanned as an expression during linearize.
+--
+-- We walk the AST once and visit each var by identity, so a name with many
+-- references is checked once. When resolve_locals was skipped (904, large
+-- file), `var.accessed` is still set by linearize, so the detection is sound;
+-- the gate and the 904 coverage gap already tell the operator the file was
+-- approximate.
+local function collect_unused(ctx, var, seen)
+   if not var or seen[var] then return end
+   seen[var] = true
+
+   local name = var.name
+   local vtype = var.type
+
+   if vtype == "var" then
+      -- 982: a local (incl. local function) never read. `_` is the throwaway.
+      if name ~= "_" and not var.accessed then
+         if lint_gate.wanted(ctx.opts, "982") then
+            ctx:emit("982", var.node, {name = name})
+         end
+      end
+   elseif vtype == "arg" then
+      -- 983: a named parameter never read. `...` and `self` are not flagged.
+      if name ~= "..." and name ~= "self" and not var.self then
+         if not var.accessed and lint_gate.wanted(ctx.opts, "983") then
+            ctx:emit("983", var.node, {name = name})
+         end
+      end
+   elseif vtype == "loop" or vtype == "loopi" then
+      -- 984: a loop variable never read. `_` is not flagged.
+      if name ~= "_" and not var.accessed then
+         if lint_gate.wanted(ctx.opts, "984") then
+            ctx:emit("984", var.node, {name = name})
+         end
+      end
+   end
+end
+
+local function detect_unused(ctx)
+   -- Bail early when none of the three codes is enabled.
+   if not lint_gate.wanted(ctx.opts, "982")
+      and not lint_gate.wanted(ctx.opts, "983")
+      and not lint_gate.wanted(ctx.opts, "984") then
+      return
+   end
+
+   -- resolve_locals attaches `.var` to declaration Ids and is what gives the
+   -- access tracking its meaning; skip when it did not run.
+   if not ctx.chstate.resolved_locals then return end
+
+   local seen = {}
+   ctx:each_node(function(node)
+      if node.var then
+         collect_unused(ctx, node.var, seen)
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_unused
 
 --- The detectors this module contributes, in run order.
 function M.detectors()
