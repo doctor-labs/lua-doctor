@@ -67,6 +67,7 @@
 --  1005  require of a module the operator restricted (selene restricted_module_paths):
 --        on whenever a restrict list is given, not behind the lint category
 --   1004 copy loop into an empty table: a manual table.clone (selene manual_table_clone)
+--  1006  cyclomatic complexity of a function too high (luacheck 561)
 --
 --   985  local redefined in the same scope        (luacheck 411): a local (including
 --        `local function`) bound a second time while the first binding is still in scope
@@ -75,7 +76,7 @@
 --   987  loop variable redefined by a local in the same scope  (luacheck 413): a
 --        loop variable shadowed by a `local` of the same name in the loop body
 --
--- Opt-in: see rules/lint_gate.lua. Code ranges 950-992 and 997-1004; 1005 is on whenever --restrict is given.
+-- Opt-in: see rules/lint_gate.lua. Code ranges 950-992, 997-1004 and 1006; 1005 is on whenever --restrict is given.
 local M = {}
 
 local detect_globals = require "luacheck.stages.detect_globals"
@@ -1840,6 +1841,131 @@ local function detect_redefinition(ctx)
 end
 
 detectors[#detectors + 1] = detect_redefinition
+
+-- ---------------------------------------------------------------- 1006
+
+-- luacheck 561. Cyclomatic complexity: 1 + the number of decision points, where a
+-- decision point is each `if`/`elseif` condition, each `while`/`repeat`/numeric
+-- `for`/generic `for` loop, and each `and`/`or` operator. The check state is
+-- luacheck's: `chstate.lines` is the linearized CFG, one entry per function scope,
+-- with `chstate.top_line` the entry that is the main chunk; `line.node` is the
+-- Function node {args, body} (or the synthetic {args, ast} for the main chunk) and
+-- `line.items` the statements whose expressions carry the `and`/`or` operands.
+--
+-- The algorithm is a direct port of
+-- `luacheck.stages.detect_cyclomatic_complexity`; it runs over the same check
+-- state the rule modules already share, so the numbers match luacheck exactly.
+-- luacheck keeps this off until `max_cyclomatic_complexity` is set; lua-doctor
+-- defaults the threshold to 10 (McCabe's classic value) once the lint family is
+-- opted into, and honours `opts.max_cyclomatic_complexity` for parity.
+local CC_LIMIT = 10
+
+local function detect_cyclomatic_complexity(ctx)
+   if not lint_gate.wanted(ctx.opts, "1006") then return end
+
+   local limit = ctx.opts.max_cyclomatic_complexity or CC_LIMIT
+
+   -- A small accumulator with methods that mirror luacheck's metric. `calc_*`
+   -- recurses through statement blocks and the expression items luacheck emits
+   -- per line; a Function node is not entered, so nested functions are measured
+   -- by their own line.
+   local metric = {}
+   metric.count = 0
+
+   local calc_expr, calc_exprs, calc_item, calc_stmt, calc_stmts
+
+   function calc_expr(node)
+      if type(node) ~= "table" then return end
+      if node.tag == "Op" and (node[1] == "and" or node[1] == "or") then
+         metric.count = metric.count + 1
+      end
+      if node.tag ~= "Function" then
+         calc_exprs(node)
+      end
+   end
+
+   function calc_exprs(exprs)
+      if not exprs then return end
+      for i = 1, #exprs do
+         local e = exprs[i]
+         if type(e) == "table" then calc_expr(e) end
+      end
+   end
+
+   function calc_item(item)
+      if type(item) ~= "table" then return end
+      local tag = item.tag
+      if tag == "Eval" then
+         calc_expr(item.node)
+      elseif tag == "Local" or tag == "Localrec" then
+         if item.rhs then calc_exprs(item.rhs) end
+      elseif tag == "Set" then
+         if item.rhs then calc_exprs(item.rhs) end
+      end
+   end
+
+   function calc_stmt(node)
+      if type(node) ~= "table" then return end
+      local tag = node.tag
+      if tag == "If" then
+         -- {cond, block, cond, block, ..., [else]}
+         for i = 1, #node - 1, 2 do
+            metric.count = metric.count + 1
+            calc_stmts(node[i + 1])
+         end
+         if #node % 2 == 1 then calc_stmts(node[#node]) end
+      elseif tag == "While" then
+         metric.count = metric.count + 1
+         calc_stmts(node[2])
+      elseif tag == "Repeat" then
+         metric.count = metric.count + 1
+         calc_stmts(node[1])
+      elseif tag == "Forin" then
+         metric.count = metric.count + 1
+         calc_stmts(node[3])
+      elseif tag == "Fornum" then
+         metric.count = metric.count + 1
+         calc_stmts(node[5] or node[4])
+      end
+   end
+
+   function calc_stmts(stmts)
+      if type(stmts) ~= "table" then return end
+      for i = 1, #stmts do
+         local stmt = stmts[i]
+         if type(stmt) == "table" then calc_stmt(stmt) end
+      end
+   end
+
+   local top_line = ctx.chstate.top_line
+   for _, line in ipairs(ctx.chstate.lines) do
+      metric.count = 1
+      calc_stmts(line.node[2])
+      for _, item in ipairs(line.items) do
+         calc_item(item)
+      end
+
+      if metric.count > limit then
+         local is_main = (line == top_line)
+         local descr
+         if is_main then
+            descr = "main chunk"
+         elseif line.node.name then
+            descr = line.node[1][1] and line.node[1][1].implicit and "method " .. line.node.name
+               or "function " .. line.node.name
+         else
+            descr = "function"
+         end
+         ctx:emit("1006", line.node, {
+            descr = descr,
+            complexity = metric.count,
+            max_complexity = limit,
+         })
+      end
+   end
+end
+
+detectors[#detectors + 1] = detect_cyclomatic_complexity
 
 --- The detectors this module contributes, in run order.
 function M.detectors()

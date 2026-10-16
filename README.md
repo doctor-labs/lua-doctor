@@ -367,7 +367,7 @@ sensitive reaching definitions. On top of that `lua-doctor` adds taint tracking
 with a stable code, severity, confidence, CWE and a source-to-sink trace, and
 plain, JSON, SARIF and HTML reports.
 
-95 registered rule codes, in five categories plus the opt-in `lint` (from `bin/lua-doctor rules list`):
+96 registered rule codes, in five categories plus the opt-in `lint` (from `bin/lua-doctor rules list`):
 
 ```sh
 bin/lua-doctor rules list | head -5
@@ -388,7 +388,7 @@ bin/lua-doctor rules list | head -5
 | `payload` | payload and backdoor patterns | 741–750 |
 | `artifact` | artifact and bytecode triage | 801–805 |
 | `meta` | parse, dialect and coverage-gap codes | 012, 901–904 |
-| `lint` | opt-in (`--category lint`): undefined names and standard-library misuse, the way luacheck and selene judge them | 950–954, 957–992, 997–1005 |
+| `lint` | opt-in (`--category lint`): undefined names and standard-library misuse, the way luacheck and selene judge them | 950–954, 957–992, 997–1006 |
 
 Every code has a doc page with a firing example, how to fix it, and a fix
 prompt: [docs/rules.md](docs/rules.md) lists them all, and

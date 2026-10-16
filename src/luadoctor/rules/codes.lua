@@ -542,4 +542,12 @@ register {code = "991", severity = "high", cwe = "CWE-0", confidence = "high",
 register {code = "992", severity = "high", cwe = "CWE-0", confidence = "high",
    message = "value assigned to {name} is never accessed"}
 
+-- luacheck 561. A function whose cyclomatic complexity exceeds the threshold:
+-- complexity is 1 plus the number of decision points (each if/elseif condition,
+-- each while/repeat/for loop, and each `and`/`or` operator). Reported under the
+-- opt-in lint family; the threshold is 10 by default and can be raised or lowered
+-- with `max_cyclomatic_complexity`.
+register {code = "1006", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "cyclomatic complexity of {descr} is too high ({complexity} > {max_complexity})"}
+
 return codes
