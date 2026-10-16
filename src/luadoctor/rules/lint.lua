@@ -37,6 +37,7 @@
 --        `goto` in the same function jumps to
 --   972  division by zero                       (selene divide_by_zero): a `/` or `%`
 --        whose right operand is the literal 0 (or folds to it), except the NaN idiom 0/0
+--   950  deprecated standard function (selene deprecated)
 --   973  line too long                          (luacheck 631): a line longer than 120 characters
 --   974  empty statement                        (luacheck 551, selene empty_statement): a stray `;`
 --   975  multiple statements on one line        (selene multiple_statements): more than one
@@ -474,6 +475,46 @@ local function detect_stdlib_misuse(ctx)
 end
 
 detectors[#detectors + 1] = detect_stdlib_misuse
+
+-- ---------------------------------------------------------------- 950
+
+-- Functions a named Lua standard still defines that a later version deprecated,
+-- keyed by the exact standard name. Only lua52 has any: Lua 5.3 deprecated these
+-- math functions and dropped them from its default build (luacheck's own tables
+-- show them in lua52 and absent from lua53). The compat std (`lua52c`) keeps
+-- them on purpose and is not judged. Names 5.2 already removed (loadstring,
+-- unpack, setfenv) are absent from lua52, so 903 reports them, not this.
+-- The value is the replacement the message names, or "" when there is none.
+local DEPRECATED = {
+   lua52 = {
+      ["math.atan2"] = "math.atan with two arguments",
+      ["math.cosh"] = "",
+      ["math.frexp"] = "",
+      ["math.ldexp"] = "x * 2 ^ e",
+      ["math.pow"] = "x ^ y",
+      ["math.sinh"] = "",
+      ["math.tanh"] = "",
+   },
+}
+
+local function detect_deprecated(ctx)
+   if not lint_gate.wanted(ctx.opts, "950") then return end
+   local standard = std_names.lua_standard(ctx.opts and ctx.opts.std)
+   local deprecated = standard and DEPRECATED[standard]
+   if not deprecated then return end
+
+   each_call(ctx.chstate, function(node)
+      local path = ctx:path_of(node[1])
+      local replacement = path and deprecated[path]
+      if replacement then
+         local use = replacement ~= "" and (", use " .. replacement) or ""
+         ctx:emit("950", node, {name = path,
+            problem = ("%s is deprecated since Lua 5.3%s"):format(path, use)})
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_deprecated
 
 -- ---------------------------------------------------------------- 959
 

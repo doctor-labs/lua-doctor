@@ -42,6 +42,9 @@ local function base_std(name)
    return std
 end
 
+--- The Lua standard a `--std` names (`lua52`, ...), or nil.
+std_names.lua_standard = lua_standard_of
+
 --- The std a run is measured against: the Lua standard it names (the union of
 -- all of them when it names none) plus what the loaded profiles declare.
 -- Rebuilt per analysis because the loaded profiles change between runs.

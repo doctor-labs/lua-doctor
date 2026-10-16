@@ -194,6 +194,7 @@ default, because a firmware tree reports them by the thousand: they run under
 
 | Code | Severity | CWE | Meaning |
 | --- | --- | --- | --- |
+| 950 | low | CWE-0 | a standard function the named Lua standard still defines but a later version deprecated: math.pow under lua52 (selene deprecated) |
 | 951 | low | CWE-0 | accessing an undefined variable (luacheck 113, selene undefined_variable) |
 | 952 | low | CWE-0 | setting or mutating a non-standard global variable (luacheck 111, 112) |
 | 953 | low | CWE-0 | setting a read-only global variable or a field of one (luacheck 121, 122) |
