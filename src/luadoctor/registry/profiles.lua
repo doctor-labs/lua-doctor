@@ -41,7 +41,7 @@ local function validate(name, declaration)
             assert(type(entry) == "table",
                "every " .. name .. "." .. key .. " entry must be a table, got "
                   .. type(entry))
-            assert(type(entry.pattern) == "string",
+            assert(key == "pattern_rules" or type(entry.pattern) == "string",
                "every " .. name .. "." .. key .. " entry needs a pattern")
          end
       end

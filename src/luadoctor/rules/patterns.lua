@@ -11,6 +11,11 @@
 -- file it is matched against. The pattern is matched at every expression of the
 -- file, so `vendor.run(x)` inside a function body is found as well.
 --
+-- Combinators (semgrep-style), all optional on one rule:
+--   pattern_either = {p1, p2, ...}  instead of pattern: any alternative matches
+--   pattern_inside = p             the match must sit inside an expression that matches p
+--   pattern_not = p                a match that also matches p is dropped
+--
 -- Codes this module owns: 742. See docs/rules.md.
 local M = {}
 
@@ -94,27 +99,79 @@ function M.validate(rule)
    if rule.cwe ~= nil and type(rule.cwe) ~= "string" then
       return ("pattern rule '%s' needs cwe as a string"):format(id)
    end
-   local _, reason = compile(rule.pattern)
-   if reason then
-      return ("pattern rule '%s': %s"):format(id, reason)
+   if rule.pattern_either ~= nil then
+      if rule.pattern ~= nil then
+         return ("pattern rule '%s' gives pattern or pattern_either, not both"):format(id)
+      end
+      if type(rule.pattern_either) ~= "table" or #rule.pattern_either == 0 then
+         return ("pattern rule '%s' needs pattern_either as a non-empty list"):format(id)
+      end
+      for _, text in ipairs(rule.pattern_either) do
+         local _, reason = compile(text)
+         if reason then return ("pattern rule '%s': %s"):format(id, reason) end
+      end
+   else
+      local _, reason = compile(rule.pattern)
+      if reason then
+         return ("pattern rule '%s': %s"):format(id, reason)
+      end
+   end
+   for _, key in ipairs({"pattern_inside", "pattern_not"}) do
+      if rule[key] ~= nil then
+         local _, reason = compile(rule[key])
+         if reason then return ("pattern rule '%s' %s: %s"):format(id, key, reason) end
+      end
    end
    return nil
 end
 
 -- ---------------------------------------------------------------- detector
 
+-- Visit each tagged expression node that is in scope, parents before children.
+-- Without an inside pattern every node is in scope; with one, a node is in scope
+-- when it or one of its ancestors matches it. Same shape as the context walk.
+local function scan(node, in_scope, inside, visit, depth)
+   if depth > 200 or type(node) ~= "table" then return end
+   if node.tag then
+      if not in_scope and matches(inside, node, {}) then in_scope = true end
+      if in_scope then visit(node) end
+   end
+   for index = 1, #node do
+      local child = node[index]
+      if type(child) == "table" then
+         if child.tag then
+            scan(child, in_scope, inside, visit, depth + 1)
+         else
+            for _, sub in ipairs(child) do
+               if type(sub) == "table" and sub.tag then
+                  scan(sub, in_scope, inside, visit, depth + 1)
+               end
+            end
+         end
+      end
+   end
+end
+
 local function detect(ctx)
    for _, rule in ipairs(platform_api.pattern_rules()) do
-      local pattern = compile(rule.pattern)
-      if pattern then
-         -- ponytail: one walk per rule over the whole file. Index by root tag if rule counts grow.
-         ctx:each_node(function(node)
-            if matches(pattern, node, {}) then
-               ctx:emit("742", node, {name = rule.id, severity = rule.severity,
-                  confidence = rule.confidence, cwe = rule.cwe})
-            end
-         end)
+      local alternatives = {}
+      for _, text in ipairs(rule.pattern_either or {rule.pattern}) do
+         alternatives[#alternatives + 1] = compile(text)
       end
+      local inside = rule.pattern_inside and compile(rule.pattern_inside)
+      local excluded = rule.pattern_not and compile(rule.pattern_not)
+      -- ponytail: one walk per rule over the whole file. Index by root tag if rule counts grow.
+      scan(ctx.chstate.ast, inside == nil, inside, function(node)
+         for _, pattern in ipairs(alternatives) do
+            if matches(pattern, node, {}) then
+               if not (excluded and matches(excluded, node, {})) then
+                  ctx:emit("742", node, {name = rule.id, severity = rule.severity,
+                     confidence = rule.confidence, cwe = rule.cwe})
+               end
+               return
+            end
+         end
+      end, 0)
    end
 end
 
