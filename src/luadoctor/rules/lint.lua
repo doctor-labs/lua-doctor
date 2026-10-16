@@ -11,6 +11,10 @@
 --   952  setting or mutating a non-standard global (luacheck 111, 112)
 --   953  setting a read-only global or a field of one (luacheck 121, 122)
 --   954  setting or accessing an undefined field of a global (luacheck 142, 143)
+--   955  accessing an uninitialized local variable (luacheck 321): a read of a
+--        local that has no reaching definition through flow analysis.
+--   956  mutating an uninitialized local variable (luacheck 341): a write or Mutation
+--        of a local that has no reaching definition through flow analysis.
 --   957  more arguments than the callee takes  (selene mismatched_arg_count)
 --   958  standard library misuse                (selene incorrect_standard_library_use):
 --        too few required arguments, a literal of the wrong type, an unused result
@@ -1337,6 +1341,70 @@ local function detect_unused_global(ctx)
 end
 
 detectors[#detectors + 1] = detect_unused_global
+
+-- ---------------------------------------------------------------- 955, 956
+
+-- Detects uninitialized access (955) and mutation (956) of local variables.
+-- This is luacheck's 321/341: when a local is accessed or mutated but has no
+-- reaching definition through flow analysis, it is uninitialized.
+--
+-- The `item.accesses` and `item.mutations` tables map variables to arrays of
+-- nodes where they are accessed or mutated. The `item.used_values[var]` contains
+-- the values that reach the access - an empty value means the variable was
+-- declared but never assigned.
+local function detect_uninit_access(ctx)
+   if not (lint_gate.wanted(ctx.opts, "955") or lint_gate.wanted(ctx.opts, "956")) then return end
+
+   for _, line in ipairs(ctx.chstate.lines) do
+      for _, item in ipairs(line.items) do
+         if item.accesses then
+            for var, accessing_nodes in pairs(item.accesses) do
+               -- Check if any access to this variable is uninitialized
+               local used_values = item.used_values[var]
+               if used_values and #used_values > 0 then
+                  -- Check if all reaching values are empty (uninitialized)
+                  local all_empty = true
+                  for _, value in ipairs(used_values) do
+                     if not value.empty then
+                        all_empty = false
+                        break
+                     end
+                  end
+
+                  if all_empty then
+                     for _, accessing_node in ipairs(accessing_nodes) do
+                        ctx:emit("955", accessing_node, {name = var.name})
+                     end
+                  end
+               end
+            end
+         end
+
+         if item.mutations then
+            for var, mutating_nodes in pairs(item.mutations) do
+               local used_values = item.used_values[var]
+               if used_values and #used_values > 0 then
+                  local all_empty = true
+                  for _, value in ipairs(used_values) do
+                     if not value.empty then
+                        all_empty = false
+                        break
+                     end
+                  end
+
+                  if all_empty then
+                     for _, mutating_node in ipairs(mutating_nodes) do
+                        ctx:emit("956", mutating_node, {name = var.name})
+                     end
+                  end
+               end
+            end
+         end
+      end
+   end
+end
+
+detectors[#detectors + 1] = detect_uninit_access
 
 -- ---------------------------------------------------------------- 982, 983, 984
 

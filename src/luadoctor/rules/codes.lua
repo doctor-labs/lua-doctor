@@ -267,6 +267,16 @@ register {code = "953", severity = "low", cwe = "CWE-0", confidence = "medium",
 register {code = "954", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "{action} undefined field of global ({name})", fields = {"action"}}
 
+-- luacheck 321. A local variable is accessed (read) without a reaching definition.
+-- Flow-sensitive: the access is unreachable from any assignment.
+register {code = "955", severity = "low", cwe = "CWE-0", confidence = "high",
+   message = "accessing uninitialized variable ({name})", fields = {"name"}}
+
+-- luacheck 341. A local variable is mutated (written to) without a reaching definition.
+-- Flow-sensitive: the mutation is unreachable from any assignment.
+register {code = "956", severity = "low", cwe = "CWE-0", confidence = "high",
+   message = "mutating uninitialized variable ({name})", fields = {"name"}}
+
 -- selene mismatched_arg_count. The extra arguments are ignored at run time, so
 -- they usually mean the callee is not the function the author had in mind; for
 -- a sink, a misplaced argument is how the value that matters never reaches it.
