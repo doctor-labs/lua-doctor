@@ -725,3 +725,45 @@ describe("981 unused module-level global (#337)", function()
       assert_equal(#found("981", "function unused_helper()\n  return 1\nend\n", {}), 0)
    end)
 end)
+
+describe("421-433 shadowing in nested scope (#345)", function()
+   local function found(code, source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == code then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("997 shadowing a local in nested scope (luacheck 421)", function()
+      assert_equal(#found("997", "local function f()\n  local x\n  do\n    local x\n  end\nend\n"), 1)
+      -- same-scope redefinition (local x, local x) is 985, not this lint
+      assert_equal(#found("997", "local function f()\n  local x\n  local y\nend\n"), 0)
+   end)
+
+   it("998 shadowing an argument in nested scope (luacheck 422)", function()
+      assert_equal(#found("998", "local function f(a)\n  do\n    local a\n  end\nend\n"), 1)
+      assert_equal(#found("998", "local function f(a)\n  local b\nend\n"), 0)
+   end)
+
+   it("999 shadowing a loop variable in nested scope (luacheck 423)", function()
+      assert_equal(#found("999", "for i = 1, 3 do\n  do\n    local i\n  end\nend\n"), 1)
+      assert_equal(#found("999", "for i = 1, 3 do\n  local j\nend\n"), 0)
+   end)
+
+   it("1000 shadowing an upvalue (luacheck 431)", function()
+      assert_equal(#found("1000", "local function outer()\n  local x\n  local function inner()\n    local x\n  end\nend\n"), 1)
+   end)
+
+   it("1001 shadowing an upvalue argument (luacheck 432)", function()
+      assert_equal(#found("1001", "local function outer(a)\n  local function inner()\n    local a\n  end\nend\n"), 1)
+   end)
+
+   it("1002 shadowing an upvalue loop variable (luacheck 433)", function()
+      assert_equal(#found("1002", "for i = 1, 3 do\n  local function inner()\n    local i\n  end\nend\n"), 1)
+   end)
+
+   it("stays off by default", function()
+      assert_equal(#found("997", "local function f()\n  local x\n  do\n    local x\n  end\nend\n", {}), 0)
+   end)
+end)

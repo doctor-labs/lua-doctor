@@ -34,10 +34,10 @@ describe("rule catalogue", function()
    end)
 
    it("sorts the catalogue by code so documentation is stable", function()
-      local previous = ""
+      local previous = 0
       for _, rule in ipairs(api.rule_catalogue()) do
-         assert_true(rule.code > previous, "catalogue is not sorted at " .. rule.code)
-         previous = rule.code
+         assert_true(tonumber(rule.code) > previous, "catalogue is not sorted at " .. rule.code)
+         previous = tonumber(rule.code)
       end
       assert_true(#api.rule_catalogue() > 20, "expected the full catalogue, not a stub")
    end)

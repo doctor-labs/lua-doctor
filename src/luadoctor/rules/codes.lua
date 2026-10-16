@@ -9,7 +9,7 @@ local codes = {}
 local registry = {}
 
 local function register(spec)
-   assert(spec.code and spec.code:match("^%d%d%d$"), "code must be three digits: " .. tostring(spec.code))
+   assert(spec.code and spec.code:match("^%d%d%d%d?$"), "code must be three or four digits: " .. tostring(spec.code))
    assert(not registry[spec.code], "duplicate warning code " .. spec.code)
    assert(spec.message, "code " .. spec.code .. " needs a message")
    assert(spec.severity, "code " .. spec.code .. " needs a severity")
@@ -21,7 +21,9 @@ end
 local function sorted_codes(t)
    local keys = {}
    for k in pairs(t) do keys[#keys + 1] = k end
-   table.sort(keys)
+   table.sort(keys, function(a, b)
+      return tonumber(a) < tonumber(b)
+   end)
    return keys
 end
 
@@ -441,5 +443,38 @@ do
       h.assert_truthy = h.assert_true
    end
 end
+
+-- ---------------------------------------------------------------- 99x lint (opt-in)
+
+-- luacheck 421. A local definition in a nested scope shadows a local defined in
+-- an enclosing scope. This is legal Lua (the outer binding is hidden until the
+-- inner scope ends) but almost always a copy-paste or rename mistake.
+register {code = "997", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "shadowing definition of variable {name} in a nested scope"}
+
+-- luacheck 422. A local definition in a nested scope shadows a function
+-- argument of an enclosing function.
+register {code = "998", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "shadowing definition of argument {name} in a nested scope"}
+
+-- luacheck 423. A local definition in a nested scope shadows a loop variable of
+-- an enclosing for loop.
+register {code = "999", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "shadowing definition of loop variable {name} in a nested scope"}
+
+-- luacheck 431. A local definition in a nested function shadows an upvalue — a
+-- variable captured from an enclosing scope.
+register {code = "1000", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "shadowing upvalue {name} in a nested scope"}
+
+-- luacheck 432. A local definition in a nested function shadows an upvalue that
+-- was an argument of an enclosing function.
+register {code = "1001", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "shadowing upvalue argument {name} in a nested scope"}
+
+-- luacheck 433. A local definition in a nested function shadows an upvalue that
+-- was a loop variable of an enclosing for loop.
+register {code = "1002", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "shadowing upvalue loop variable {name} in a nested scope"}
 
 return codes

@@ -184,7 +184,7 @@ statement about its data, not about its code.
 
 Names and library use, judged the way luacheck and selene judge them. Off by
 default, because a firmware tree reports them by the thousand: they run under
-`--category lint` or an `--enable 95` pattern (also `--only`). Range 950-987.
+`--category lint` or an `--enable 95` pattern (also `--only`). Ranges 950-987 and 997-1002.
 
 | Code | Severity | CWE | Meaning |
 | --- | --- | --- | --- |
@@ -223,6 +223,12 @@ default, because a firmware tree reports them by the thousand: they run under
 | 985 | low | CWE-0 | local redefined in the same scope: a local (including `local function`) bound a second time while the first binding is still in scope (luacheck 411) |
 | 986 | low | CWE-0 | argument redefined by a local in the same scope: a named function argument shadowed by a `local` of the same name in the function body (luacheck 412) |
 | 987 | low | CWE-0 | loop variable redefined by a local in the same scope: a loop variable shadowed by a `local` of the same name in the loop body (luacheck 413) |
+| 997 | low | CWE-0 | shadowing a local in a nested scope (luacheck 421) |
+| 998 | low | CWE-0 | shadowing an argument in a nested scope (luacheck 422) |
+| 999 | low | CWE-0 | shadowing a loop variable in a nested scope (luacheck 423) |
+| 1000 | low | CWE-0 | shadowing an upvalue in a nested scope (luacheck 431) |
+| 1001 | low | CWE-0 | shadowing an upvalue argument in a nested scope (luacheck 432) |
+| 1002 | low | CWE-0 | shadowing an upvalue loop variable in a nested scope (luacheck 433) |
 
 ## 9xx - meta
 
