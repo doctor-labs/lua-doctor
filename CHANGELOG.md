@@ -5,6 +5,7 @@ All notable changes to this project are documented here. The format follows
 
 ## Unreleased
 
+- Opt-in lint 1005: a constant `require` of a module named with `--restrict <module,...>` (and its submodules), selene restricted_module_paths (#384). The code is four digits; the code validator accepts 3 or 4.
 - Opt-in lint 950: a standard function the named Lua standard still defines but a later version deprecated, math.pow under lua52 (selene deprecated) (#383).
 - Opt-in lint 1004: a copy loop into an empty table (`local out = {}` then `for k, v in pairs(src) do out[k] = v end`), selene manual_table_clone (#376). Codes are three or four digits now, so 1004 is the first four-digit lint code.
 - Opt-in lints 955-956: accessing uninitialized variable (luacheck 321) and mutating uninitialized variable (luacheck 341) (#343). 955 reports reading a local before it has been assigned; 956 reports mutating a field of a local that has not been assigned.

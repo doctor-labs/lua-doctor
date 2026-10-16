@@ -57,7 +57,7 @@ local BOOLEAN_FLAGS = {
 -- --rules file that did not exist, or did not parse, was accepted silently: the
 -- operator's declarations never loaded and the report was quietly narrower.
 local LIST_OPTIONS = {only = "only", ignore = "ignore", enable = "enable",
-   category = "category", rules = "rules"}
+   category = "category", rules = "rules", restrict = "restrict"}
 
 local function add_list(target, name, value)
    target[name] = target[name] or {}
@@ -196,6 +196,8 @@ selection:
   --staged                   only files staged in git (for a pre-commit hook)
   --allow-defined            lint: a global the file assigns counts as defined where it is read
                              (selene's undefined_variable; luacheck's allow_defined)
+  --restrict <module,...>     1005: report a constant require of each module here, and its submodules
+                             (selene restricted_module_paths); repeatable, comma separated
 
 analysis:
   --whole-program            resolve calls across files. Follows require edges

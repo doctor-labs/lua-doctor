@@ -726,6 +726,30 @@ describe("981 unused module-level global (#337)", function()
    end)
 end)
 
+describe("1005 require of a restricted module (#384)", function()
+   local RESTRICT = {category = {"lint"}, restrict = {"socket"}}
+
+   it("reports a constant require of a restricted module, named", function()
+      assert_equal(table.concat(names_of('local s = require("socket")\n', RESTRICT, "1005"), ","), "socket")
+   end)
+
+   it("reports a submodule of a restricted module", function()
+      assert_equal(#names_of('require "socket.http"\n', RESTRICT, "1005"), 1)
+   end)
+
+   it("does not report a module that only shares a name prefix", function()
+      assert_equal(#names_of('require "socketx"\n', RESTRICT, "1005"), 0)
+   end)
+
+   it("does not report a module that is not restricted", function()
+      assert_equal(#names_of('require "lfs"\n', RESTRICT, "1005"), 0)
+   end)
+
+   it("reports nothing when no list is given", function()
+      assert_equal(#names_of('require "socket"\n', LINT, "1005"), 0)
+   end)
+end)
+
 describe("950 deprecated standard function (#383)", function()
    local LUA52 = {category = {"lint"}, std = "lua52"}
 

@@ -64,6 +64,8 @@
 --        statement follows a return, break, goto, or an error()/os.exit() call
 --        in the same block, so it can never execute
 --   981  module-level global assigned but never read (luacheck 131)
+--  1005  require of a module the operator restricted (selene restricted_module_paths):
+--        on whenever a restrict list is given, not behind the lint category
 --   1004 copy loop into an empty table: a manual table.clone (selene manual_table_clone)
 --
 --   985  local redefined in the same scope        (luacheck 411): a local (including
@@ -73,7 +75,7 @@
 --   987  loop variable redefined by a local in the same scope  (luacheck 413): a
 --        loop variable shadowed by a `local` of the same name in the loop body
 --
--- Opt-in: see rules/lint_gate.lua. Code ranges 950-992 and 997-1004.
+-- Opt-in: see rules/lint_gate.lua. Code ranges 950-992 and 997-1004; 1005 is on whenever --restrict is given.
 local M = {}
 
 local detect_globals = require "luacheck.stages.detect_globals"
@@ -1383,6 +1385,35 @@ local function detect_unused_global(ctx)
 end
 
 detectors[#detectors + 1] = detect_unused_global
+
+-- ---------------------------------------------------------------- 1005
+
+-- selene restricted_module_paths. The operator names the modules the project
+-- must not require (`--restrict socket,lfs`); a constant `require "socket"` or
+-- `require "socket.http"` is reported with the restricted name. The list is the
+-- opt-in, so this does not wait for the lint category. A non-constant module name
+-- is 705's finding, not this one.
+-- ponytail: matches the raw token text, so an escaped name ("soc\107et") is missed.
+local function detect_restricted_module(ctx)
+   local list = ctx.opts.restrict
+   if type(list) ~= "table" or #list == 0 then return end
+
+   ctx:each_node(function(node)
+      if node.tag ~= "Call" then return end
+      local fn = node[1]
+      if not fn or fn.tag ~= "Id" or fn[1] ~= "require" or fn.var then return end
+      local arg = node[2]
+      if not arg or arg.tag ~= "String" then return end
+      for _, prefix in ipairs(list) do
+         if arg[1] == prefix or arg[1]:sub(1, #prefix + 1) == prefix .. "." then
+            ctx:emit("1005", node, {name = arg[1]})
+            return
+         end
+      end
+   end)
+end
+
+detectors[#detectors + 1] = detect_restricted_module
 
 -- ---------------------------------------------------------------- 1004
 
