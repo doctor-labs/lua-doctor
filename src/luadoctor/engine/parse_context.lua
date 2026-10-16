@@ -15,9 +15,16 @@ local parser = require "luacheck.parser"
 local check_state = require "luacheck.check_state"
 local unwrap_parens = require "luacheck.stages.unwrap_parens"
 local linearize = require "luacheck.stages.linearize"
+local parse_inline_options = require "luacheck.stages.parse_inline_options"
 local name_functions = require "luacheck.stages.name_functions"
 local resolve_locals = require "luacheck.stages.resolve_locals"
 local utils = require "luacheck.utils"
+
+-- luacheck codes that report an inline option directive problem. luacheck calls
+-- these 021 (invalid option), 022 (unpaired push) and 023 (unpaired pop); lua-doctor
+-- does not use those codes (they are in luacheck's reserved set), so they are
+-- folded into 012, the same code it uses for an unreadable lua-doctor directive.
+local INLINE_OPTION_CODES = {["021"] = true, ["022"] = true, ["023"] = true}
 
 local parse_context = {}
 
@@ -97,6 +104,30 @@ local function strip_bom(bytes)
    return bytes
 end
 
+-- Run luacheck's parse_inline_options stage and stash its 021/022/023 warnings
+-- (malformed -- luacheck: directives) on chstate.inline_option_warnings, removed
+-- from chstate.warnings so they do not show up as raw warnings for the lint
+-- detectors to pick up.
+local function collect_inline_option_warnings(chstate)
+   local before = #chstate.warnings
+   parse_inline_options.run(chstate)
+   local collected = {}
+   local kept = {}
+   for i = 1, before do
+      kept[#kept + 1] = chstate.warnings[i]
+   end
+   for i = before + 1, #chstate.warnings do
+      local w = chstate.warnings[i]
+      if w and INLINE_OPTION_CODES[w.code] then
+         collected[#collected + 1] = w
+      else
+         kept[#kept + 1] = w
+      end
+   end
+   chstate.warnings = kept
+   chstate.inline_option_warnings = collected
+end
+
 function parse_context.build(source_bytes, options)
    options = options or {}
    local max_nodes = options.max_nodes or 20000
@@ -140,6 +171,10 @@ function parse_context.build(source_bytes, options)
    local staged, stage_error = pcall(function()
       unwrap_parens.run(chstate)
       linearize.run(chstate)
+      -- parse_inline_options needs top_line from linearize. It emits 021/022/023
+      -- warnings for malformed -- luacheck: directives; those are collected into
+      -- chstate.inline_option_warnings and converted to 012 by the pipeline.
+      collect_inline_option_warnings(chstate)
       name_functions.run(chstate)
    end)
 

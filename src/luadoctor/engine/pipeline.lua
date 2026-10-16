@@ -413,6 +413,25 @@ local function finalize(result, opts)
       }
    end
 
+   -- luacheck inline-option warnings (021/022/023) folded into 012, the same
+   -- code a malformed lua-doctor directive gets. parse_context.build collected
+   -- them during parsing; emit one 012 per warning.
+   if chstate.inline_option_warnings then
+      for _, w in ipairs(chstate.inline_option_warnings) do
+         findings[#findings + 1] = {
+            code = "012",
+            line = w.line or 1,
+            column = w.column or 1,
+            end_column = w.end_column or 1,
+            severity = "low",
+            confidence = "certain",
+            name = "luacheck inline option",
+            message = codes.render(codes.get("012"), {code = "012", name = "luacheck inline option"})
+               .. ": " .. tostring(w.msg),
+         }
+      end
+   end
+
    if #directives == 0 and #problems == 0 then
       return findings
    end

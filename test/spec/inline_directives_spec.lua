@@ -222,3 +222,40 @@ describe("a suppression pattern with too many repetition quantifiers", function(
       end
    end)
 end)
+
+describe("luacheck inline option errors (#339)", function()
+   it("reports a malformed -- luacheck: directive as 012", function()
+      local report = api.check_source(
+         "-- luacheck: badoption\nos.execute(cmd)\n", {std = "luajit"})
+      assert_match(codes(report), "012", "expected a 012 for the malformed luacheck directive")
+   end)
+
+   it("does not report a well-formed luacheck directive", function()
+      local report = api.check_source(
+         "-- luacheck: ignore 711\nos.execute(cmd)\n", {std = "luajit"})
+      assert_match(codes(report), "701", "expected the sink, not a 012")
+      assert_no_match(codes(report), "012", "a valid directive must not produce a 012")
+   end)
+
+   it("reports an inline option error alongside other findings", function()
+      local report = api.check_source(
+         "-- luacheck: badoption\nos.execute(cmd)\n", {std = "luajit"})
+      local has_012, has_701 = false, false
+      for _, finding in ipairs(report) do
+         if finding.code == "012" then has_012 = true end
+         if finding.code == "701" then has_701 = true end
+      end
+      assert_true(has_012, "expected a 012 for the malformed directive")
+      assert_true(has_701, "expected the 701 sink to survive")
+   end)
+
+   it("reports each malformed luacheck directive on its own line", function()
+      local report = api.check_source(
+         "-- luacheck: badone\n-- luacheck: badtwo\nos.execute(cmd)\n", {std = "luajit"})
+      local count = 0
+      for _, finding in ipairs(report) do
+         if finding.code == "012" then count = count + 1 end
+      end
+      assert_equal(count, 2, "expected two 012 findings, got " .. codes(report))
+   end)
+end)
