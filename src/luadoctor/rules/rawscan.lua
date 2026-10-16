@@ -630,6 +630,161 @@ local function match_path(roots, table, path)
    return best, best_code
 end
 
+-- ----------------------------------------------------- unreachable after return
+
+-- luacheck rejects a `return` whose block keeps a following statement: in Lua a
+-- `return` with a value must be the last statement of its block, so a source like
+-- `return 1\nprint('x')` is a syntax error (reported as 901) before luacheck's
+-- 511 pass runs and the AST is unavailable. The AST-based 980 detector in
+-- lint.lua therefore never sees that file: rule detectors only run on files that
+-- parsed. The raw scan is the pass that runs on parse-failed files, so it is the
+-- only place this unreachable shape can be reported.
+--
+-- `break`, `goto`, `error()` and `os.exit()` followed by a statement all parse
+-- (the pinned parser only forces `return` to be last), so they are reported
+-- through the normal AST detector. Only the `return` case reaches here.
+--
+-- The scan walks the token stream once, tracking block depth and a small state
+-- machine for "inside a `return` statement". A return ends at `;` or at a token
+-- that cannot continue its expression (a newline after a value-ending token, or
+-- any non-continuation token that follows a value-ending token). If the return
+-- had a value, the next token that begins a new statement in the same block is
+-- unreachable; only the first such statement is reported, one per terminator,
+-- matching the AST detector's output shape.
+
+-- Names that let an expression continue across a newline, so a `return` does not
+-- end at the line break.
+local LINE_CONTINUATION = {["and"] = true, ["or"] = true, ["not"] = true,
+   ["in"] = true, ["("] = true, ["..."] = true}
+
+-- True when a token ends an expression rather than letting it continue.
+local function value_ends_line(kind, value)
+   if kind == "number" or kind == "string" then return true end
+   if kind == "name" then
+      -- `return` does not end an expression at a newline: `return\nf(x)` parses as
+      -- one return whose value is `f(x)`, so a following-line expression continues
+      -- it rather than starting dead code.
+      return not LINE_CONTINUATION[value] and value ~= "return"
+   end
+   if kind == "op" then
+      return value == ")" or value == "]" or value == "}"
+   end
+   return false
+end
+
+-- True when a token can keep an expression or argument list going across itself
+-- (so it is NOT a return-statement terminator).
+local function continues_expression(kind, value)
+   if kind == "op" then
+      return value ~= ";"
+   end
+   if kind == "name" then
+      return LINE_CONTINUATION[value] or false
+   end
+   return false
+end
+
+local BLOCK_CLOSERS = {["end"] = true, ["until"] = true, ["else"] = true, ["elseif"] = true}
+
+--- Report a `return` that is not the last statement of its block.
+-- One finding per offending `return`, placed on the first unreachable statement
+-- that follows it.
+local function scan_unreachable_return(source, opts)
+   local findings = {}
+   -- 980 is an opt-in lint code: only report it when the operator asked for lint.
+   if not (opts and require("luadoctor.rules.lint_gate").wanted(opts, "980")) then
+      return findings
+   end
+
+   local lex = new_lexer(source)
+   if lex.n == 0 then return findings end
+
+   -- Collect tokens with the block depth seen at each token. Block openers
+   -- (do/for/while/function/if/repeat) raise depth; `end`/`until` lower it.
+   local tokens, depth = {}, 0
+   while true do
+      local kind, value, line, column = lex:next_token()
+      if kind == "eof" then break end
+      if kind == "name" then
+         if value == "do" or value == "for" or value == "while"
+            or value == "function" or value == "if" or value == "repeat" then
+            depth = depth + 1
+         elseif value == "end" or value == "until" then
+            if depth > 0 then depth = depth - 1 end
+         end
+      end
+      tokens[#tokens + 1] = {kind = kind, value = value, line = line,
+         column = column, depth = depth}
+   end
+
+   -- State machine:
+   --  "idle"   — not inside a return.
+   --  "expr"   — inside a `return`'s expression list; ret.has_value grows.
+   --  "ended"  — the return ended with a value; the next statement token, if it
+   --             is in the return's block and follows it, is unreachable.
+   local state, ret = "idle", nil
+   for i = 1, #tokens do
+      local t = tokens[i]
+      local prev = tokens[i - 1]
+
+      if state == "idle" then
+         if t.kind == "name" and t.value == "return" then
+            state, ret = "expr", {depth = t.depth, has_value = false, line = t.line}
+         end
+
+      elseif state == "expr" then
+         -- A `;` always ends the return statement.
+         if t.kind == "op" and t.value == ";" then
+            if ret.has_value then state = "ended" else state, ret = "idle", nil end
+
+         -- A non-continuation token after a value-ending token ends the return.
+         -- This covers both `return 1\nprint` and `return 1 print` (same line).
+         elseif prev and value_ends_line(prev.kind, prev.value)
+            and not continues_expression(t.kind, t.value) then
+            if ret.has_value then
+               -- THIS token begins the unreachable statement.
+               if not (t.kind == "name" and BLOCK_CLOSERS[t.value])
+                  and t.depth == ret.depth and t.line > ret.line then
+                  local spec = codes.get("980")
+                  local finding = {
+                     code = "980",
+                     line = t.line,
+                     column = t.column,
+                     end_column = t.column,
+                     severity = spec.severity,
+                     confidence = spec.confidence or "low",
+                     cwe = spec.cwe,
+                     name = "return",
+                     terminator = "return",
+                  }
+                  finding.message = codes.render(spec, finding)
+                  findings[#findings + 1] = finding
+               end
+               state = "ended"
+            else
+               -- `return` with no value yet seen: the following tokens are this
+               -- return's own expression (e.g. `return f(x)`), not dead code.
+               state, ret = "idle", nil
+            end
+         else
+            -- Still reading the return's expression.
+            if value_ends_line(t.kind, t.value) then ret.has_value = true end
+         end
+
+      elseif state == "ended" then
+         -- Skip over the (unreachable) dead statements until the return's block
+         -- closes. A closer at a lower depth means we left the block: stop.
+         if t.kind == "name" and (t.value == "end" or t.value == "until")
+            and t.depth < ret.depth then
+            state, ret = "idle", nil
+         end
+         -- Any other token here is more dead code; ignore (one per terminator).
+      end
+   end
+
+   return findings
+end
+
 -- ------------------------------------------------------------- raw scan
 
 --- Lex raw source and report the patterns visible in it, whether or not the
@@ -830,6 +985,18 @@ function M.scan_source(source, opts)
             report(make_finding("711", line, column, "backtick command literal"))
             report(make_finding("902", line, column, "backtick command literal"))
          end
+      end
+   end
+
+   -- 980 for a `return <value>` that is not the last statement of its block.
+   -- The parser rejects that source before luacheck builds an AST, so the AST
+   -- detector cannot see it; this lexical pass covers only that one shape, and
+   -- only on parse-failed files (dialect_only is the parseable-file path, which
+   -- the lint detector already handles for break/goto/error/os.exit). It is
+   -- opt-in via the lint gate inside the function.
+   if not dialect_only then
+      for _, finding in ipairs(scan_unreachable_return(source, opts)) do
+         report(finding)
       end
    end
 

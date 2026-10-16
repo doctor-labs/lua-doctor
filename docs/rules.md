@@ -184,7 +184,7 @@ statement about its data, not about its code.
 
 Names and library use, judged the way luacheck and selene judge them. Off by
 default, because a firmware tree reports them by the thousand: they run under
-`--category lint` or an `--enable 95` pattern (also `--only`). Range 950-981.
+`--category lint` or an `--enable 95` pattern (also `--only`). Range 950-984.
 
 | Code | Severity | CWE | Meaning |
 | --- | --- | --- | --- |
@@ -215,11 +215,11 @@ default, because a firmware tree reports them by the thousand: they run under
 | 977 | low | CWE-0 | indentation has a space before a tab (luacheck 621) |
 | 978 | low | CWE-0 | use of _G: reading or writing the global table directly, or indexing it (selene global_usage) |
 | 979 | low | CWE-0 | a comparison passed to type(): type() called with a comparison as its argument, e.g. type(x == "s") (selene type_check_inside_call) |
+| 980 | low | CWE-0 | unreachable code after a terminating statement: a statement follows a return, break, goto, or global `error()`/`os.exit()` call in the same block (luacheck 511) |
+| 981 | low | CWE-0 | module-level global assigned but never read in the file (luacheck 131) |
 | 982 | low | CWE-0 | unused local: a `local` (including `local function`) bound but never read (luacheck 211) |
 | 983 | low | CWE-0 | unused function argument: a named parameter never read, not `...` or `self` (luacheck 212) |
 | 984 | low | CWE-0 | unused loop variable: a generic-for key/value or numeric-for counter never read, not `_` (luacheck 213) |
-
-| 981 | low | CWE-0 | module-level global assigned but never read in the file (luacheck 131) |
 
 ## 9xx - meta
 
