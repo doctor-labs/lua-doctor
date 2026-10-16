@@ -22,6 +22,12 @@ local builtin = {
    openresty = "luadoctor.registry.stds.openresty",
    hisi = "luadoctor.registry.stds.hisi",
    espressif = "luadoctor.registry.stds.espressif",
+   -- Test, game and packaging globals. Named here, not left to luacheck's Lua
+   -- standards, so they add to the defaults the way a platform profile does.
+   busted = "luadoctor.registry.stds.busted",
+   love = "luadoctor.registry.stds.love",
+   rockspec = "luadoctor.registry.stds.rockspec",
+   roblox = "luadoctor.registry.stds.roblox",
 }
 
 local function validate(name, declaration)
@@ -203,10 +209,10 @@ end
 
 --- Every name `--std` accepts, platform profiles and Lua standards.
 function profiles.known_names()
-   local names = profiles.builtin_names()
-   for name in pairs(builtin_standards) do
-      names[#names + 1] = name
-   end
+   local seen, names = {}, {}
+   for _, name in ipairs(profiles.builtin_names()) do seen[name] = true end
+   for name in pairs(builtin_standards) do seen[name] = true end
+   for name in pairs(seen) do names[#names + 1] = name end
    table.sort(names)
    return names
 end
