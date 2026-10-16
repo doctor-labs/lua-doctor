@@ -60,7 +60,14 @@
 --        in the same block, so it can never execute
 --   981  module-level global assigned but never read (luacheck 131)
 --
--- Opt-in: see rules/lint_gate.lua. Code range 950-984.
+--   985  local redefined in the same scope        (luacheck 411): a local (including
+--        `local function`) bound a second time while the first binding is still in scope
+--   986  argument redefined by a local in the same scope  (luacheck 412): a named
+--        argument shadowed by a `local` of the same name in the function body
+--   987  loop variable redefined by a local in the same scope  (luacheck 413): a
+--        loop variable shadowed by a `local` of the same name in the loop body
+--
+-- Opt-in: see rules/lint_gate.lua. Code range 950-987.
 local M = {}
 
 local detect_globals = require "luacheck.stages.detect_globals"
@@ -1444,6 +1451,57 @@ local function detect_unreachable(ctx)
 end
 
 detectors[#detectors + 1] = detect_unreachable
+
+-- ---------------------------------------------------------------- 985, 986, 987
+
+-- luacheck 411/412/413. linearize already detects a local, argument or loop
+-- variable being bound a second time in the same scope (as opposed to a nested
+-- scope, which is 421-433). Those warnings sit in chstate.warnings, produced by
+-- linearize and never consumed: detect_names only harvests the 11x codes from
+-- detect_globals. We re-emit the same-scope redefinitions as 985/986/987, each
+-- opt-in like the rest of the lint family.
+
+-- luacheck code -> lua-doctor code for the same-scope redefinition cases only.
+-- 42x and 43x are shadowing (a different, nested scope), which is legal Lua.
+local REDEFINITION = {
+   ["411"] = "985",
+   ["412"] = "986",
+   ["413"] = "987",
+}
+
+-- A warning has line/column/end_column from luacheck's warn_var, but no
+-- offset/end_offset. Reconstruct them from the file's line_offsets the same way
+-- the `span` helper above does for detect_globals warnings.
+local function warning_node(chstate, warning)
+   local start = (chstate.line_offsets[warning.line] or 0)
+   local offset = start + warning.column - 1
+   return {
+      tag = "Id",
+      line = warning.line,
+      offset = offset,
+      end_offset = offset + math.max(0, (warning.end_column or warning.column) - warning.column),
+   }
+end
+
+local function detect_redefinition(ctx)
+   if not (lint_gate.wanted(ctx.opts, "985")
+      or lint_gate.wanted(ctx.opts, "986")
+      or lint_gate.wanted(ctx.opts, "987")) then return end
+
+   for _, warning in ipairs(ctx.chstate.warnings) do
+      local doctor_code = REDEFINITION[warning.code]
+      if doctor_code and lint_gate.wanted(ctx.opts, doctor_code) then
+         -- 986 flags argument redefinitions; self is an implicit argument and is
+         -- never reported, matching luacheck's own "..." exclusion.
+         if not (doctor_code == "986" and warning.name == "self") then
+            ctx:emit(doctor_code, warning_node(ctx.chstate, warning),
+               {name = warning.name})
+         end
+      end
+   end
+end
+
+detectors[#detectors + 1] = detect_redefinition
 
 --- The detectors this module contributes, in run order.
 function M.detectors()
