@@ -980,3 +980,56 @@ describe("311-314/331 value overwritten before use (#342)", function()
       assert_equal(#found("988", "local function f()\n  local x = 1\n  x = 2\nreturn x\nend\n", {}), 0)
    end)
 end)
+
+describe("1006 cyclomatic complexity (luacheck 561)", function()
+   local function found(source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == "1006" then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   -- 10 `and` operators -> complexity 11 (1 base + 10 decision points).
+   it("reports a function over the default complexity of 10", function()
+      assert_equal(#found("function f(a)\n  return a and a and a and a and a and a and a and a and a and a and a\nend\n"), 1)
+   end)
+
+   -- `if` + 9 `elseif` = 10 conditions = complexity 11.
+   it("counts each if/elseif branch as a decision point", function()
+      local src = "function f(x)\n  if x == 1 then return 1\n"
+         .. "elseif x == 2 then return 2\nelseif x == 3 then return 3\n"
+         .. "elseif x == 4 then return 4\nelseif x == 5 then return 5\n"
+         .. "elseif x == 6 then return 6\nelseif x == 7 then return 7\n"
+         .. "elseif x == 8 then return 8\nelseif x == 9 then return 9\n"
+         .. "elseif x == 10 then return 10\nend\nend\n"
+      assert_equal(#found(src), 1)
+   end)
+
+   -- complexity 10 (1 base + 9 `and`): not over the threshold.
+   it("does not report a function at exactly the threshold", function()
+      assert_equal(#found("function f(a)\n  return a and a and a and a and a and a and a and a and a and a\nend\n"), 0)
+   end)
+
+   it("does not report a simple function", function()
+      assert_equal(#found("function f(a)\n  return a\nend\n"), 0)
+   end)
+
+   it("only reports the function that is too complex", function()
+      local src = "function simple(a)\n  return a\nend\n"
+         .. "function nested(x)\n  return x and x and x and x and x and x and x and x and x and x and x\nend\n"
+      assert_equal(#found(src), 1)
+   end)
+
+   it("honours an explicit max_cyclomatic_complexity option", function()
+      assert_equal(#found("function f(a)\n  return a and a and a\nend\n",
+         {category = {"lint"}, max_cyclomatic_complexity = 2}), 1)
+      assert_equal(#found("function f(a)\n  return a and a and a\nend\n",
+         {category = {"lint"}, max_cyclomatic_complexity = 3}), 0)
+   end)
+
+   it("stays off by default", function()
+      assert_equal(#found("function f(a)\n  return a and a and a and a and a and a and a and a and a and a and a\nend\n",
+         {}), 0)
+   end)
+end)
