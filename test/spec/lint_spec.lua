@@ -726,6 +726,22 @@ describe("981 unused module-level global (#337)", function()
    end)
 end)
 
+describe("950 deprecated standard function (#383)", function()
+   local LUA52 = {category = {"lint"}, std = "lua52"}
+
+   it("reports math.pow under the lua52 standard, which Lua 5.3 deprecated", function()
+      assert_equal(table.concat(names_of('print(math.pow(2, 3))\n', LUA52, "950"), ","), "math.pow")
+   end)
+
+   it("does not report a function the lua52 standard has no deprecation for", function()
+      assert_equal(#names_of('print(math.floor(2.5), math.max(1, 2))\n', LUA52, "950"), 0)
+   end)
+
+   it("does not judge deprecation when no Lua standard is named", function()
+      assert_equal(#names_of('print(math.pow(2, 3))\n', {category = {"lint"}}, "950"), 0)
+   end)
+end)
+
 describe("1004 manual table clone (#376)", function()
    local function found(source, opts)
       local out = {}
