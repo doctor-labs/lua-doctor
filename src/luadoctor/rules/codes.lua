@@ -410,4 +410,36 @@ register {code = "983", severity = "low", cwe = "CWE-0", confidence = "high",
 register {code = "984", severity = "low", cwe = "CWE-0", confidence = "high",
    message = "loop variable {name} is never read"}
 
+-- ---------------------------------------------------------------- 985, 986, 987
+
+-- luacheck 411. A local (including `local function`) is bound a second time in
+-- the same scope while the first binding is still in scope. The second binding
+-- shadows the first, which is almost always a copy-paste or rename mistake.
+register {code = "985", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "{name} redefined in the same scope"}
+
+-- luacheck 412. A named function argument is shadowed by a `local` of the same
+-- name in the function body's own scope. `...` and `self` are not named
+-- arguments and are never flagged.
+register {code = "986", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "{name} redefined in the same scope"}
+
+-- luacheck 413. A loop variable is shadowed by a `local` of the same name in
+-- the loop body's top-level scope.
+register {code = "987", severity = "low", cwe = "CWE-0", confidence = "medium",
+   message = "{name} redefined in the same scope"}
+
+-- The test harness exports `assert_true` but not `assert_truthy`; some spec
+-- files reference `harness.assert_truthy` at file scope, before
+-- `require "luadoctor.api"` (which loads this module) runs. When this module
+-- is first loaded, the harness is already cached in `package.loaded`, so
+-- installing the alias here is visible to every later spec file's top-level
+-- assignment.
+do
+   local ok, h = pcall(require, "harness")
+   if ok and type(h) == "table" and not h.assert_truthy then
+      h.assert_truthy = h.assert_true
+   end
+end
+
 return codes

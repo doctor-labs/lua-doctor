@@ -184,7 +184,7 @@ statement about its data, not about its code.
 
 Names and library use, judged the way luacheck and selene judge them. Off by
 default, because a firmware tree reports them by the thousand: they run under
-`--category lint` or an `--enable 95` pattern (also `--only`). Range 950-984.
+`--category lint` or an `--enable 95` pattern (also `--only`). Range 950-987.
 
 | Code | Severity | CWE | Meaning |
 | --- | --- | --- | --- |
@@ -220,6 +220,9 @@ default, because a firmware tree reports them by the thousand: they run under
 | 982 | low | CWE-0 | unused local: a `local` (including `local function`) bound but never read (luacheck 211) |
 | 983 | low | CWE-0 | unused function argument: a named parameter never read, not `...` or `self` (luacheck 212) |
 | 984 | low | CWE-0 | unused loop variable: a generic-for key/value or numeric-for counter never read, not `_` (luacheck 213) |
+| 985 | low | CWE-0 | local redefined in the same scope: a local (including `local function`) bound a second time while the first binding is still in scope (luacheck 411) |
+| 986 | low | CWE-0 | argument redefined by a local in the same scope: a named function argument shadowed by a `local` of the same name in the function body (luacheck 412) |
+| 987 | low | CWE-0 | loop variable redefined by a local in the same scope: a loop variable shadowed by a `local` of the same name in the loop body (luacheck 413) |
 
 ## 9xx - meta
 
