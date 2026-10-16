@@ -34,17 +34,23 @@ local builtin = {
 local function validate(name, declaration)
    assert(type(declaration) == "table", "profile " .. name .. " must return a table")
    for _, key in ipairs({"sources", "sinks", "propagators", "shapes", "entry_points",
-         "store_writes", "store_reads", "validators"}) do
+         "store_writes", "store_reads", "validators", "pattern_rules"}) do
       if declaration[key] ~= nil then
          assert(type(declaration[key]) == "table", "profile " .. name .. "." .. key .. " must be a list")
          for _, entry in ipairs(declaration[key]) do
             assert(type(entry) == "table",
                "every " .. name .. "." .. key .. " entry must be a table, got "
                   .. type(entry))
-            assert(type(entry.pattern) == "string",
+            assert(key == "pattern_rules" or type(entry.pattern) == "string",
                "every " .. name .. "." .. key .. " entry needs a pattern")
          end
       end
+   end
+   for _, rule in ipairs(declaration.pattern_rules or {}) do
+      -- The pattern is compiled here, so a rule that will not parse fails the load
+      -- rather than silently matching nothing.
+      local problem = require("luadoctor.rules.patterns").validate(rule)
+      assert(problem == nil, problem)
    end
    if declaration.modules ~= nil then
       assert(type(declaration.modules) == "table", "profile " .. name .. ".modules must be a table")

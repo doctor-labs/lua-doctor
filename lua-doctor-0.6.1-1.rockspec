@@ -95,6 +95,7 @@ build = {
       ["luadoctor.rules.lint"] = "src/luadoctor/rules/lint.lua",
       ["luadoctor.rules.lint_gate"] = "src/luadoctor/rules/lint_gate.lua",
       ["luadoctor.rules.names"] = "src/luadoctor/rules/names.lua",
+      ["luadoctor.rules.patterns"] = "src/luadoctor/rules/patterns.lua",
       ["luadoctor.rules.payloads"] = "src/luadoctor/rules/payloads.lua",
       ["luadoctor.rules.rawscan"] = "src/luadoctor/rules/rawscan.lua",
       ["luadoctor.rules.registry"] = "src/luadoctor/rules/registry.lua",

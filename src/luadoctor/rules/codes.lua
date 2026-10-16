@@ -199,6 +199,14 @@ register {code = "750", severity = "critical", cwe = "CWE-1203",
    message = "matches a known exploit or malware signature: {name}",
    fields = {"signature", "pack_version"}}
 
+-- ---------------------------------------------------------------- 742 declared patterns
+
+-- A declaration's `pattern_rules` entry matched a call or expression. The rule's
+-- own id is the name, and its severity and CWE come from the declaration.
+register {code = "742", severity = "medium", confidence = "high",
+   message = "matches a declared pattern rule: {name}",
+   fields = {"name"}}
+
 -- ---------------------------------------------------------------- 8xx artifact
 
 register {code = "801", severity = "medium", cwe = "CWE-0",
