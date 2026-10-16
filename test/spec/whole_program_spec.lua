@@ -291,6 +291,16 @@ describe("whole-program mode: bounds", function()
       assert_equal(only(findings, "709").file, "/scan/ok/f05.lua")
    end)
 
+   it("reaches a sink through a twelve-module chain without hitting the default bound", function()
+      local states = states_from(chain_of(12, "/scan/deep"))
+      local findings, diagnostics = whole_program.analyze(states, {whole_program = true})
+
+      assert_equal(codes(findings), "709")
+      assert_equal(#diagnostics.bounds_hit, 0,
+         "a twelve-module chain is a real firmware depth, not a runaway, and must not be cut at eight rounds")
+      assert_equal(only(findings, "709").file, "/scan/deep/f11.lua")
+   end)
+
    it("marks a finding whose file had more call sites than the bound allowed", function()
       local states = states_from({
          {path = "/scan/many/handler.lua", source = [[

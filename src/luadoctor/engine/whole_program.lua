@@ -20,9 +20,9 @@
 -- working inside the other file. Returns are followed in two shapes: a
 -- local function's return value, and a module field's return value, both within
 -- one file. Under --whole-program the return of a function in a module bound with
--- local m = require "mod" is followed too. Not followed: a method call (M:m),
--- a function passed as a value, require(...) called inline inside an expression,
--- and anything past the depth cap.
+-- local m = require "mod" is followed too, and so is one reached through a
+-- require(...) written inline inside an expression. Not followed: a method call
+-- (M:m), a function passed as a value, and anything past the depth cap.
 --
 -- The finding belongs to the file that holds the sink. Every step of its trace
 -- names the file that step is in, so a flow crossing three files says which
@@ -37,7 +37,7 @@ local whole_program = {}
 -- lists what it found. They are read from `opts` so a caller can trade time for
 -- reach, and so a test can reach a bound it would otherwise have to build a
 -- hundred files to reach.
-local MAX_ROUNDS = 8
+local MAX_ROUNDS = 16
 local MAX_MODULES_PER_FILE = 32
 local MAX_SITES_PER_FILE = 4096
 local MAX_ALIAS_DEPTH = 4
@@ -1105,7 +1105,7 @@ end
 --                                   over it counts as analyzed approximately
 --   whole_program_basename          also resolve a name to the one scanned file
 --                                   with that basename (default false)
---   whole_program_max_rounds        fixpoint rounds (default 8)
+--   whole_program_max_rounds        fixpoint rounds (default 16)
 --   whole_program_max_modules       distinct callee files one file may feed
 --                                   (default 32)
 --   whole_program_max_sites         cross-file call sites considered per file
@@ -1215,12 +1215,12 @@ function whole_program.analyze(states, opts)
    -- engine asks for such a callee through state.resolve_external, and follows
    -- the target function's return in the target file's own state. Every file
    -- gets its state first, so no taint run starts inside another file's
-   -- propagation. Only a variable bound to a required module is resolved; a
-   -- require() called inline inside an expression is not.
-   local hooked = {}
-   for _, file in ipairs(files) do
-      if next(file.modules_of_var or {}) then hooked[#hooked + 1] = file end
-   end
+   -- propagation. A require() called inline inside an expression
+   -- (`os.execute(require("lib").echo(x))`) is resolved the same way, and the
+   -- file that holds it may bind no module to a variable at all, so every file
+   -- gets the resolver. ponytail: a file with no require pays one extra taint
+   -- run; add a require scan to skip it if whole-program time shows it.
+   local hooked = files
    if #hooked > 0 then
       for _, file in ipairs(files) do state_of(file, ctx) end
       for _, file in ipairs(hooked) do
