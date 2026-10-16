@@ -413,6 +413,11 @@ register {code = "980", severity = "low", cwe = "CWE-0", confidence = "high",
 register {code = "981", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "global {name} is assigned but never used"}
 
+-- 1005. require of a module the operator restricted with `--restrict` (selene
+-- restricted_module_paths). Four digits: 982-1004 are not free across open branches.
+register {code = "1005", severity = "low", cwe = "CWE-0", confidence = "high",
+   message = "require of restricted module {name}"}
+
 -- selene deprecated. A standard function the named Lua standard still defines
 -- but a later version deprecated (math.pow under lua52).
 register {code = "950", severity = "low", cwe = "CWE-0", confidence = "high",

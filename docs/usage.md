@@ -791,6 +791,10 @@ and its defining assignment is not reported as 952. A local declared later is no
 a definition. When one of the built-in standards defines a name the message says
 which, e.g. `defined by --std +luci`.
 
+`--restrict <module,...>` turns on 1005 for a constant `require` of each named module
+and its submodules (`--restrict socket` flags `require "socket.http"`). It needs no
+`--category lint`: the list is the opt-in. A non-constant module name is 705 instead.
+
 ### Choosing a family
 
 `--category` keeps only one or more code families: `exec`, `firmware`,
