@@ -55,6 +55,7 @@ build = {
       ["luadoctor.engine.escapes"] = "src/luadoctor/engine/escapes.lua",
       ["luadoctor.engine.parse_context"] = "src/luadoctor/engine/parse_context.lua",
       ["luadoctor.engine.pipeline"] = "src/luadoctor/engine/pipeline.lua",
+      ["luadoctor.engine.results_cache"] = "src/luadoctor/engine/results_cache.lua",
       ["luadoctor.engine.taint"] = "src/luadoctor/engine/taint.lua",
       ["luadoctor.engine.whole_program"] = "src/luadoctor/engine/whole_program.lua",
       ["luadoctor.main"] = "src/luadoctor/main.lua",

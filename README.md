@@ -582,7 +582,7 @@ as a child process and returns the envelope unchanged, byte for byte. Arguments:
 `severity_threshold`, `whole_program`. Not offered over MCP: `--help`, `--version`,
 `--stdin`, `--validate`, `--format`, `-o`, `--view`, `--summary`, `--score`, the
 interactive, progress and colour flags, the config and rule-file flags, `--only`,
-`--ignore`, `--enable`, `--category`, the scope flags, `--jobs` and `--max-nodes`.
+`--ignore`, `--enable`, `--category`, the scope flags, `--jobs`, `--cache` and `--max-nodes`.
 A run that exits `2` comes back as a tool error carrying the message.
 
 ## Exit codes
@@ -706,6 +706,7 @@ The most used flags:
 | `--severity-threshold, --min-confidence` | floor for reported severity, confidence |
 | `--whole-program` | follow `require` edges across files |
 | `--jobs <n>` | analyze files in n worker processes (same report; `--whole-program` stays in one) |
+| `--cache <file>` | reuse each file's findings while its content and the options are unchanged (per-file; not with `--whole-program`) |
 | `--quiet` | print nothing when there are no findings |
 | `--score` | print only the 0-100 health score |
 | `--config <file>`, `--no-config` | settings file, or ignore it |

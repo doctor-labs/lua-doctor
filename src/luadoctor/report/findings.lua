@@ -146,13 +146,16 @@ end
 -- hash of `code:name:file`. FNV-1a because Lua has no stdlib hash and this one
 -- is eight lines; Lua 5.3+ integers wrap on overflow, which is the mod 2^64 the
 -- algorithm wants.
-function findings.fingerprint(finding)
-   local identity = table.concat({finding.code, finding.name, finding.file}, ":")
+function findings.fnv1a(input)
    local hash = 0xcbf29ce484222325 -- the FNV offset basis
-   for index = 1, #identity do
-      hash = (hash ~ identity:byte(index)) * 0x100000001b3
+   for index = 1, #input do
+      hash = (hash ~ input:byte(index)) * 0x100000001b3
    end
    return string.format("%016x", hash)
+end
+
+function findings.fingerprint(finding)
+   return findings.fnv1a(table.concat({finding.code, finding.name, finding.file}, ":"))
 end
 
 -- Whether `path` names a directory. Opening it is not the test: POSIX open(2)
