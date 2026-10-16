@@ -726,6 +726,85 @@ describe("981 unused module-level global (#337)", function()
    end)
 end)
 
+describe("955 accessing uninitialized local variable (#343)", function()
+   local function found(code, source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == code then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("reports reading a local that was declared but never assigned", function()
+      local hits = found("955", "local x\nprint(x)\n")
+      assert_equal(#hits, 1)
+      assert_match(hits[1], "x", hits[1])
+   end)
+
+   it("reports accessing a local inside a closure that was never assigned", function()
+      local hits = found("955", "local x\nlocal function f() return x end\n")
+      assert_equal(#hits, 1)
+      assert_match(hits[1], "x", hits[1])
+   end)
+
+   it("does not report a local that was assigned before use", function()
+      assert_equal(#found("955", "local x = 1\nprint(x)\n"), 0)
+      assert_equal(#found("955", "local x\nx = 1\nprint(x)\n"), 0)
+   end)
+
+   it("does not report a local that is assigned in a reachable branch", function()
+      -- This would be a different code: the variable is assigned but not in all paths
+      -- For now, just check basic cases
+      assert_equal(#found("955", "local x\nif true then x = 1 end\nprint(x)\n"), 0)
+   end)
+
+   it("reports each uninitialized access", function()
+      local hits = found("955", "local x\nprint(x)\nprint(x)\n")
+      assert_equal(#hits, 2)
+   end)
+
+   it("does not report arguments that are never assigned", function()
+      -- function parameters are initialized with nil, so they're "assigned"
+      assert_equal(#found("955", "local function f(x)\nreturn x end\n"), 0)
+   end)
+
+   it("stays off by default", function()
+      assert_equal(#found("955", "local x\nprint(x)\n", {}), 0)
+   end)
+end)
+
+describe("956 mutating uninitialized local variable (#343)", function()
+   local function found(code, source, opts)
+      local out = {}
+      for _, finding in ipairs(api.check_source(source, opts or LINT)) do
+         if finding.code == code then out[#out + 1] = finding.message end
+      end
+      return out
+   end
+
+   it("reports writing to a local field of an uninitialized variable", function()
+      local hits = found("956", "local t\nt.x = 1\n")
+      assert_equal(#hits, 1)
+      assert_match(hits[1], "t", hits[1])
+   end)
+
+   it("does not report a local that was assigned before mutation", function()
+      assert_equal(#found("956", "local t = {}\nt.x = 1\n"), 0)
+      assert_equal(#found("956", "local t\nt = {}\nt.x = 1\n"), 0)
+   end)
+
+   it("reports compound assignment on uninitialized variables", function()
+      -- x = x + 1 reads x before assignment
+      local hits = found("955", "local x\nx = x + 1\n")
+      assert_equal(#hits, 1)
+      assert_match(hits[1], "x", hits[1])
+   end)
+
+   it("stays off by default", function()
+      assert_equal(#found("956", "local t\nt.x = 1\n", {}), 0)
+   end)
+end)
+
 describe("421-433 shadowing in nested scope (#345)", function()
    local function found(code, source, opts)
       local out = {}
