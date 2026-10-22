@@ -297,6 +297,22 @@ describe("a severity threshold value that is not a severity", function()
    end)
 end)
 
+describe("--self-describe flag", function()
+   it("prints JSON environment fingerprint and exits clean 0", function()
+      local out, code = harness.cli({"--self-describe"})
+      assert_equal(code, 0, out)
+      local json = require "luadoctor.report.json"
+      local findings = require "luadoctor.report.findings"
+      local parsed = findings.decode(out)
+      assert_equal(parsed.tool, "lua-doctor")
+      assert_equal(parsed.schema, "doctor/1")
+      assert_true(type(parsed.version) == "string")
+      assert_true(type(parsed.formats) == "table")
+      assert_true(type(parsed.categories) == "table")
+      assert_true(type(parsed.exit_codes) == "table")
+   end)
+end)
+
 describe("a min-confidence value that is not a confidence level", function()
    it("is a config error and exits 2, naming the valid values", function()
       -- Same shape as the severity check: a typo in --min-confidence fell through

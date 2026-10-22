@@ -217,6 +217,27 @@ local function run(argv, watched_files)
       return EXIT_CLEAN
    end
 
+   if opts.self_describe then
+      local description = {
+         tool = "lua-doctor",
+         version = version.luadoctor,
+         luacheck_version = version.luacheck,
+         rules_pack = version.rules_pack,
+         lua_version = _VERSION,
+         schema = "doctor/1",
+         formats = {"plain", "json", "sarif", "html", "junit", "tap", "visual_studio"},
+         categories = {"exec", "firmware", "payload", "artifact", "meta", "lint"},
+         exit_codes = {
+            ["0"] = "clean (no findings at or above --fail-on)",
+            ["1"] = "findings at or above --fail-on",
+            ["2"] = "usage error or failed execution",
+            ["3"] = "baseline new finding"
+         }
+      }
+      io.stdout:write(json.encode(description), "\n")
+      return EXIT_CLEAN
+   end
+
    if opts.validate then
       return validate(opts)
    end

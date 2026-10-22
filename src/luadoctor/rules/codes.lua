@@ -259,7 +259,7 @@ register {code = "951", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "accessing undefined variable ({name}){note}", fields = {"note"}}
 
 -- luacheck 111 (setting a global the std does not define) and 112 (mutating one,
--- `foo.bar = 1`). The `action` field says which; the finding is about a global
+-- `foo.bar = 1`) / selene unscoped_variables. The `action` field says which; the finding is about a global
 -- that leaks into the shared environment, which is also how a sandbox is escaped.
 register {code = "952", severity = "low", cwe = "CWE-0", confidence = "medium",
    message = "{action} non-standard global variable ({name})", fields = {"action"}}
@@ -537,12 +537,12 @@ register {code = "991", severity = "high", cwe = "CWE-0", confidence = "high",
    message = "value assigned to table field {field} is overwritten before use",
    fields = {"field"}}
 
--- luacheck 231/331. A variable is assigned a value but is never accessed, or
+-- luacheck 221/231/232/233/241/331 / selene unused_variable. A variable is assigned a value but is never accessed, or
 -- is mutated (reassigned) but never accessed. Opt-in.
 register {code = "992", severity = "high", cwe = "CWE-0", confidence = "high",
    message = "value assigned to {name} is never accessed"}
 
--- luacheck 561. A function whose cyclomatic complexity exceeds the threshold:
+-- luacheck 561 / selene high_cyclomatic_complexity. A function whose cyclomatic complexity exceeds the threshold:
 -- complexity is 1 plus the number of decision points (each if/elseif condition,
 -- each while/repeat/for loop, and each `and`/`or` operator). Reported under the
 -- opt-in lint family; the threshold is 10 by default and can be raised or lowered

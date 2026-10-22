@@ -98,12 +98,16 @@ local EMITTED = {
    ["122"] = {code = "953", action = "setting a field of"},
    ["142"] = {code = "954", action = "setting"},
    ["143"] = {code = "954", action = "accessing"},
-   -- 988-992: unused and overwritten values (luacheck 311/312/313/314/231/331)
+   -- 988-992: unused and overwritten values (luacheck 221/231-233/241/311-314/331, selene unused_variable)
    ["311"] = {code = "988"},
    ["312"] = {code = "989"},
    ["313"] = {code = "990"},
    ["314"] = {code = "991"},
+   ["221"] = {code = "992"},
    ["231"] = {code = "992"},
+   ["232"] = {code = "992"},
+   ["233"] = {code = "992"},
+   ["241"] = {code = "992"},
    ["331"] = {code = "992"},
 }
 

@@ -99,28 +99,34 @@ function M.validate(rule)
    if rule.cwe ~= nil and type(rule.cwe) ~= "string" then
       return ("pattern rule '%s' needs cwe as a string"):format(id)
    end
-   if rule.pattern_either ~= nil then
-      if rule.pattern ~= nil then
+   local pattern_either = rule.pattern_either or rule["pattern-either"]
+   local pattern_inside = rule.pattern_inside or rule["pattern-inside"]
+   local pattern_not = rule.pattern_not or rule["pattern-not"]
+   local pattern = rule.pattern
+   if pattern_either ~= nil then
+      if pattern ~= nil then
          return ("pattern rule '%s' gives pattern or pattern_either, not both"):format(id)
       end
-      if type(rule.pattern_either) ~= "table" or #rule.pattern_either == 0 then
+      if type(pattern_either) ~= "table" or #pattern_either == 0 then
          return ("pattern rule '%s' needs pattern_either as a non-empty list"):format(id)
       end
-      for _, text in ipairs(rule.pattern_either) do
+      for _, text in ipairs(pattern_either) do
          local _, reason = compile(text)
          if reason then return ("pattern rule '%s': %s"):format(id, reason) end
       end
    else
-      local _, reason = compile(rule.pattern)
+      local _, reason = compile(pattern)
       if reason then
          return ("pattern rule '%s': %s"):format(id, reason)
       end
    end
-   for _, key in ipairs({"pattern_inside", "pattern_not"}) do
-      if rule[key] ~= nil then
-         local _, reason = compile(rule[key])
-         if reason then return ("pattern rule '%s' %s: %s"):format(id, key, reason) end
-      end
+   if pattern_inside ~= nil then
+      local _, reason = compile(pattern_inside)
+      if reason then return ("pattern rule '%s' pattern_inside: %s"):format(id, reason) end
+   end
+   if pattern_not ~= nil then
+      local _, reason = compile(pattern_not)
+      if reason then return ("pattern rule '%s' pattern_not: %s"):format(id, reason) end
    end
    return nil
 end
@@ -154,12 +160,15 @@ end
 
 local function detect(ctx)
    for _, rule in ipairs(platform_api.pattern_rules()) do
+      local pattern_either = rule.pattern_either or rule["pattern-either"]
+      local pattern_inside = rule.pattern_inside or rule["pattern-inside"]
+      local pattern_not = rule.pattern_not or rule["pattern-not"]
       local alternatives = {}
-      for _, text in ipairs(rule.pattern_either or {rule.pattern}) do
+      for _, text in ipairs(pattern_either or {rule.pattern}) do
          alternatives[#alternatives + 1] = compile(text)
       end
-      local inside = rule.pattern_inside and compile(rule.pattern_inside)
-      local excluded = rule.pattern_not and compile(rule.pattern_not)
+      local inside = pattern_inside and compile(pattern_inside)
+      local excluded = pattern_not and compile(pattern_not)
       -- ponytail: one walk per rule over the whole file. Index by root tag if rule counts grow.
       scan(ctx.chstate.ast, inside == nil, inside, function(node)
          for _, pattern in ipairs(alternatives) do
