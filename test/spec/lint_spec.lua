@@ -971,8 +971,10 @@ describe("311-314/331 value overwritten before use (#342)", function()
       assert_equal(#found("991", "local t = {x = 1}\nreturn t\n"), 0)
    end)
 
-   it("992 value assigned is mutated but never accessed (luacheck 331)", function()
+   it("992 value assigned is mutated or set but never accessed (luacheck 221/231-233/241/331, selene unused_variable)", function()
       assert_equal(#found("992", "local function f()\n  local x = 1\n  x = 2\nend\n"), 1)
+      assert_equal(#found("992", "local function f(a)\n  a = 2\nend\n"), 1)
+      assert_equal(#found("992", "local function f()\n  for i = 1, 10 do\n    i = 5\n  end\nend\n"), 1)
       assert_equal(#found("992", "local function f()\n  local x = 1\nreturn x\nend\n"), 0)
    end)
 

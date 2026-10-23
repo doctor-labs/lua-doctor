@@ -5,6 +5,7 @@ local assert_equal, assert_true = harness.assert_equal, harness.assert_true
 local api = require "luadoctor.api"
 
 local RULES = "test/fixtures/pattern_rules/combinator_rules.lua"
+local HYPHEN_RULES = "test/fixtures/pattern_rules/hyphen_combinator_rules.lua"
 local BAD = "test/fixtures/pattern_rules/bad_combinator.lua"
 
 local function named(report, name)
@@ -43,6 +44,18 @@ vendor.run(y)
 ]], {rules = {RULES}}), "run-in-wrap")
       assert_equal(#hits, 1)
       assert_equal(hits[1].line, 1)
+   end)
+
+   it("supports hyphenated combinators (pattern-either, pattern-inside, pattern-not)", function()
+      local hits = named(api.check_source([[
+wrap(vendor.run("ls"))
+wrap(vendor.run(cgi.x))
+wrap(vendor.exec(cgi.y))
+vendor.exec(cgi.z)
+]], {rules = {HYPHEN_RULES}}), "hyphen-test")
+      assert_equal(#hits, 2)
+      assert_equal(hits[1].line, 2)
+      assert_equal(hits[2].line, 3)
    end)
 
    it("refuses a rule whose pattern_not is not Lua expression syntax", function()

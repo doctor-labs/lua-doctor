@@ -26,6 +26,7 @@ local FLAGS_WITH_VALUE = {
 local BOOLEAN_FLAGS = {
    ["--json"] = "json",
    ["--version"] = "version",
+   ["--self-describe"] = "self_describe",
    ["--help"] = "help",
    ["-h"] = "help",
    ["--whole-program"] = "whole_program",
@@ -231,6 +232,7 @@ the sandbox itself failed.
 other:
   -h, --help                 this message
   --version                  print version and exit
+  --self-describe            print environment and tool capabilities in JSON and exit
   mcp                        serve the scan tool over MCP (stdio)
   lsp                        editor diagnostics over LSP (stdio), on open, change and save
   rules list | explain <code>  the rule catalogue, and one code's doc page
